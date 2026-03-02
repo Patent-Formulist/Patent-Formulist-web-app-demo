@@ -62,7 +62,7 @@ export function ReferenceProvider({ children }) {
   const restoreAnalogPolling = useCallback((patentId, taskId) => {
     analogIntervalsRef.current[patentId] = setInterval(async () => {
       try {
-        const result = await referenceService.getTaskResult(taskId)
+        const result = await referenceService.getTaskResult(taskId, patentId)
 
         if (result.status === TASK_STATUS.SUCCESS) {
           clearInterval(analogIntervalsRef.current[patentId])
@@ -111,7 +111,7 @@ export function ReferenceProvider({ children }) {
   const restoreComparePolling = useCallback((patentId, taskId) => {
     compareIntervalsRef.current[patentId] = setInterval(async () => {
       try {
-        const result = await referenceService.getCompareResult(taskId)
+        const result = await referenceService.getCompareResult(taskId, patentId)
 
         if (result.status === TASK_STATUS.SUCCESS) {
           clearInterval(compareIntervalsRef.current[patentId])
@@ -160,7 +160,7 @@ export function ReferenceProvider({ children }) {
   const restorePrototypePolling = useCallback((patentId, taskId) => {
     prototypeIntervalsRef.current[patentId] = setInterval(async () => {
       try {
-        const result = await referenceService.getPrototypeResult(taskId)
+        const result = await referenceService.getPrototypeResult(taskId, patentId)
 
         if (result.status === TASK_STATUS.SUCCESS) {
           clearInterval(prototypeIntervalsRef.current[patentId])

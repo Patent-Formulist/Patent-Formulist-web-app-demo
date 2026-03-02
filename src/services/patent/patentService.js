@@ -6,6 +6,7 @@ import authService from '../auth/authService'
 
 class PatentService {
   async getUserPatents() {
+    console.log('🔍 API_PATENT_ENDPOINTS.PATENT_GET_ALL =', API_PATENT_ENDPOINTS.PATENT_GET_ALL);
     if (APP_CONFIG.USE_OFFLINE_MODE) {
       await mockDelay(null)
       return Object.entries(MOCK_PATENTS).map(([id, patent]) => ({

@@ -117,11 +117,11 @@ export default function Analogues() {
             <tbody>
               {Object.values(analogsData).map((analog, index) => (
                 <tr key={index}>
-                  <td>{analog.number}</td>
+                  <td>{analog.analog_num || analog.number}</td>
                   <td>{analog.title}</td>
                   <td>
                     <a 
-                      href={analog.link} 
+                      href={analog.analog_link || analog.link}
                       target="_blank" 
                       rel="noopener noreferrer"
                       className={styles.link}

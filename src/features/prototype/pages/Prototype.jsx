@@ -88,6 +88,16 @@ export default function Prototype() {
   
   const compareTask = getCompareTask(id)
   const prototypeTask = getPrototypeTask(id)
+
+    console.log('🔍 [Prototype] id =', id);
+  console.log('🔍 [Prototype] prototypeTask =', prototypeTask);
+  console.log('🔍 [Prototype] prototypeTask?.data =', prototypeTask?.data);
+  console.log('🔍 [Prototype] localStorage raw =', localStorage.getItem(`analogs_identity_${id}`));
+  if (prototypeTask?.data) {
+    console.log('🔍 [Prototype] has prototype?', !!prototypeTask.data.prototype);
+    console.log('🔍 [Prototype] has prototype_features?', !!prototypeTask.data.prototype_features);
+    console.log('🔍 [Prototype] has patent_features?', !!prototypeTask.data.patent_features);
+  }
   
   const isCompareCompleted = compareTask?.status === TASK_STATUS.SUCCESS && compareTask?.data
   const loading = prototypeTask?.status === TASK_STATUS.RUNNING

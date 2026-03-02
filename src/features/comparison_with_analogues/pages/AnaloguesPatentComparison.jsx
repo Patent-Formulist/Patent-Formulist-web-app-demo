@@ -151,10 +151,40 @@ export default function AnaloguesPatentComparison() {
   }
 
   const renderComparisonTable = () => {
-    if (!comparisonData) return null
+      if (!comparisonData) {
+        console.log('📊 Нет данных для отображения');
+        return null;
+      }
+      const patentData = comparisonData[id] || comparisonData;
 
-    const { features, analogs, comparison, frequency, user_patent, user_comparison, analog_counts } = comparisonData
+      console.log('📊 patentData:', patentData);
 
+      if (!patentData) {
+        console.error('❌ Нет данных для патента', id);
+        return <div className={styles.error}>Нет данных для отображения</div>;
+      }
+
+      if (!patentData) {
+        console.error('❌ Нет данных для патента', id);
+        return <div className={styles.error}>Нет данных для отображения</div>;
+      }
+
+      const { features, analogs, comparison, frequency, user_patent, user_comparison, analog_counts } = patentData;
+
+      console.log('📊 analogs:', analogs);
+      console.log('📊 features:', features);
+      console.log('📊 features length:', features?.length);
+      console.log('📊 analogs length:', analogs?.length);
+
+      if (!features) {
+        console.error('❌ features отсутствует');
+        return <div className={styles.error}>Ошибка данных: признаки отсутствуют</div>;
+      }
+
+      if (!analogs) {
+        console.error('❌ analogs отсутствует');
+        return <div className={styles.error}>Ошибка данных: аналоги отсутствуют</div>;
+      }
     return (
       <div className={styles.tableWrapper}>
         <div className={styles.tableContainer}>
