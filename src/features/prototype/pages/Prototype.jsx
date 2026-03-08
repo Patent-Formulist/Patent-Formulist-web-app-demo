@@ -34,19 +34,51 @@ const downloadPrototypeExcel = (prototype, patentId) => {
 }
 
 const downloadFeaturesExcel = (prototypeFeatures, patentFeatures, fileName) => {
-  const headers = ['Номер', 'Признаки прототипа', 'Признаки патента']
-  const rows = prototypeFeatures.map((prototypeFeature, idx) => [
-    idx + 1,
-    prototypeFeature,
-    patentFeatures[idx] || ''
-  ])
+  const headers = ['', 'Признаки патента', 'Признаки прототипа']
+  const rows = []
+  
+  // Разделяем на секции
+  const midpoint = Math.ceil(prototypeFeatures.length / 2)
+  const limitingFeatures = prototypeFeatures.slice(0, midpoint)
+  const distinguishingFeatures = prototypeFeatures.slice(midpoint)
+  const limitingPatentFeatures = patentFeatures.slice(0, midpoint)
+  const distinguishingPatentFeatures = patentFeatures.slice(midpoint)
+  
+  rows.push(['Ограничительные признаки', '', ''])
+  
+  // Ограничительные признаки
+  limitingFeatures.forEach((feature, idx) => {
+    rows.push([
+      `${idx + 1}. ${feature}`,
+      limitingPatentFeatures[idx] || '',
+      feature
+    ])
+  })
+  
+  rows.push(['Отличительные признаки', '', ''])
+  
+  // Отличительные признаки
+  distinguishingFeatures.forEach((feature, idx) => {
+    rows.push([
+      `${midpoint + idx + 1}. ${feature}`,
+      distinguishingPatentFeatures[idx] || '',
+      feature
+    ])
+  })
 
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
   worksheet['!cols'] = [
-    { wch: 10 },
+    { wch: 70 },
     { wch: 60 },
     { wch: 60 }
   ]
+  
+  // Объединяем ячейки для заголовков секций
+  const merges = []
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }) // Ограничительные
+  merges.push({ s: { r: 1 + limitingFeatures.length + 1, c: 0 }, e: { r: 1 + limitingFeatures.length + 1, c: 2 } }) // Отличительные
+  
+  worksheet['!merges'] = merges
 
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Признаки')
@@ -148,18 +180,27 @@ export default function Prototype() {
   }
 
   const handleDownloadPrototype = () => {
-    if (!isCompleted) {
-      showWarning('Сначала получите характеристики прототипа')
-      return
-    }
-
-    try {
-      downloadPrototypeExcel(prototypeData.prototype, id)
-      showSuccess('Характеристики прототипа успешно скачаны')
-    } catch (err) {
-      showError('Ошибка при скачивании характеристик прототипа')
-    }
+  if (!isCompleted) {
+    showWarning('Сначала получите характеристики прототипа')
+    return
   }
+  
+  if (!prototypeData?.prototype_features || !prototypeData?.patent_features) {
+    showWarning('Данные признаков недоступны')
+    return
+  }
+  
+  try {
+    downloadFeaturesExcel(
+      prototypeData.prototype_features,
+      prototypeData.patent_features,
+      `prototype_comparison_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
+    )
+    showSuccess('Таблица сравнения признаков успешно скачана')
+  } catch (err) {
+    showError('Ошибка при скачивании таблицы сравнения')
+  }
+}
 
   const handleGetFeatures = () => {
     if (!prototypeData?.prototype_features || !prototypeData?.patent_features) {
@@ -238,47 +279,81 @@ export default function Prototype() {
     }
   }
 
-  const renderPrototypeTable = () => {
-    if (!prototypeData?.prototype) return null
-
-    const { prototype } = prototypeData
-
-    return (
-      <div className={styles.tableWrapper}>
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Номер</th>
-                <th>Название</th>
-                <th>Ссылка</th>
-                <th>Реферат</th>
-                <th>Формула</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{prototype.number}</td>
-                <td>{prototype.title}</td>
-                <td>
-                  <a 
-                    href={prototype.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={styles.link}
-                  >
-                    Открыть
-                  </a>
-                </td>
-                <td>{prototype.abstract}</td>
-                <td>{prototype.claims}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )
+  const renderFeaturesComparisonTable = () => {
+  if (!prototypeData?.prototype_features || !prototypeData?.patent_features) {
+    return null
   }
+
+  const { prototype_features, patent_features } = prototypeData
+  
+  // Разделяем признаки на ограничительные и отличительные
+  // (первая половина - ограничительные, вторая - отличительные)
+  const midpoint = Math.ceil(prototype_features.length / 2)
+  const limitingFeatures = prototype_features.slice(0, midpoint)
+  const distinguishingFeatures = prototype_features.slice(midpoint)
+  
+  const limitingPatentFeatures = patent_features.slice(0, midpoint)
+  const distinguishingPatentFeatures = patent_features.slice(midpoint)
+
+  return (
+    <div className={styles.tableWrapper}>
+      <div className={styles.tableContainer}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th className={styles.featureHeader}>Признаки</th>
+              <th className={styles.featureHeader}>Признаки патента</th>
+              <th className={styles.featureHeader}>Признаки прототипа</th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* Ограничительные признаки */}
+            <tr className={styles.sectionRow}>
+              <td colSpan="3" className={styles.sectionTitle}>
+                Ограничительные признаки
+              </td>
+            </tr>
+            {limitingFeatures.map((feature, idx) => (
+              <tr key={`limiting-${idx}`}>
+                <td className={styles.featureCell}>
+                  <span className={styles.featureNumber}>{idx + 1}.</span>
+                  {feature}
+                </td>
+                <td className={styles.featureCell}>
+                  {limitingPatentFeatures[idx] || '—'}
+                </td>
+                <td className={styles.featureCell}>
+                  {feature}
+                </td>
+              </tr>
+            ))}
+            
+            {/* Отличительные признаки */}
+            <tr className={styles.sectionRow}>
+              <td colSpan="3" className={styles.sectionTitle}>
+                Отличительные признаки
+              </td>
+            </tr>
+            {distinguishingFeatures.map((feature, idx) => (
+              <tr key={`distinguishing-${idx}`}>
+                <td className={styles.featureCell}>
+                  <span className={styles.featureNumber}>{midpoint + idx + 1}.</span>
+                  {feature}
+                </td>
+                <td className={styles.featureCell}>
+                  {distinguishingPatentFeatures[idx] || '—'}
+                </td>
+                <td className={styles.featureCell}>
+                  {feature}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
   const renderFeaturesAll = () => {
     if (!prototypeData?.prototype_features || !prototypeData?.patent_features) return null
@@ -363,149 +438,61 @@ export default function Prototype() {
     )
   }
 
-  return (
-    <>
-      <div className={styles.container}>
-        {viewMode === 'main' && (
-          <div className={styles.buttonContainer}>
-            <button 
-              className={`${styles.actionButton} ${loading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
-              onClick={handleGetPrototype}
-              disabled={loading}
-            >
-              Получить характеристики прототипа
-            </button>
-            <button 
-              className={`${styles.actionButton} ${!isCompleted ? styles.inactive : ''}`}
-              onClick={handleDownloadPrototype}
-            >
-              Скачать характеристики прототипа
-            </button>
-            <button 
-              className={`${styles.actionButton} ${!isCompleted ? styles.inactive : ''}`}
-              onClick={handleGetFeatures}
-            >
-              Получить признаки патента и прототипа
-            </button>
-          </div>
-        )}
-
-        {viewMode === 'features-menu' && (
-          <div className={styles.buttonContainer}>
-            <button 
-              className={styles.actionButton}
-              onClick={handleBackToMain}
-            >
-              Назад
-            </button>
-            <button 
-              className={styles.actionButton}
-              onClick={handleShowAllFeatures}
-            >
-              Признаки патента и прототипа
-            </button>
-            <button 
-              className={styles.actionButton}
-              onClick={handleShowPrototypeFeatures}
-            >
-              Признаки прототипа
-            </button>
-            <button 
-              className={styles.actionButton}
-              onClick={handleShowPatentFeatures}
-            >
-              Признаки патента
-            </button>
-          </div>
-        )}
-
-        {viewMode === 'features-all' && (
-          <div className={styles.buttonContainer}>
-            <button 
-              className={styles.actionButton}
-              onClick={handleBackToFeaturesMenu}
-            >
-              Назад
-            </button>
-            <button 
-              className={styles.actionButton}
-              onClick={handleDownloadAllFeatures}
-            >
-              Скачать признаки
-            </button>
-          </div>
-        )}
-
-        {viewMode === 'features-prototype' && (
-          <div className={styles.buttonContainer}>
-            <button 
-              className={styles.actionButton}
-              onClick={handleBackToFeaturesMenu}
-            >
-              Назад
-            </button>
-            <button 
-              className={styles.actionButton}
-              onClick={handleDownloadPrototypeFeatures}
-            >
-              Скачать признаки
-            </button>
-          </div>
-        )}
-
-        {viewMode === 'features-patent' && (
-          <div className={styles.buttonContainer}>
-            <button 
-              className={styles.actionButton}
-              onClick={handleBackToFeaturesMenu}
-            >
-              Назад
-            </button>
-            <button 
-              className={styles.actionButton}
-              onClick={handleDownloadPatentFeatures}
-            >
-              Скачать признаки
-            </button>
-          </div>
-        )}
-
-        {prototypeData && viewMode === 'main' && renderPrototypeTable()}
-        {prototypeData && viewMode === 'features-all' && renderFeaturesAll()}
-        {prototypeData && viewMode === 'features-prototype' && renderFeaturesPrototype()}
-        {prototypeData && viewMode === 'features-patent' && renderFeaturesPatent()}
+return (
+  <>
+    <div className={styles.container}>
+      {/* Кнопки — только основные */}
+      <div className={styles.buttonContainer}>
+        <button 
+          className={`${styles.actionButton} ${loading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
+          onClick={handleGetPrototype}
+          disabled={loading}
+        >
+          Получить характеристики прототипа
+        </button>
+        <button 
+          className={`${styles.actionButton} ${!isCompleted ? styles.inactive : ''}`}
+          onClick={handleDownloadPrototype}
+        >
+          Скачать таблицу сравнения признаков
+        </button>
       </div>
 
-      {confirmModalVisible && createPortal(
-        <div className={styles.modalOverlay} onClick={cancelRestart}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.modalTitle}>Повторное получение прототипа?</h3>
-            <p className={styles.modalText}>
-              Вы уверены, что хотите выполнить повторное получение характеристик прототипа?
-            </p>
-            <p className={styles.modalWarning}>
-              Текущие данные будут заменены.
-            </p>
-            <div className={styles.modalButtons}>
-              <button 
-                className={styles.modalCancelButton} 
-                onClick={cancelRestart}
-                type="button"
-              >
-                Отмена
-              </button>
-              <button 
-                className={styles.modalConfirmButton} 
-                onClick={confirmRestart}
-                type="button"
-              >
-                Продолжить
-              </button>
-            </div>
+      {/* ТАБЛИЦА СРАВНЕНИЯ */}
+      {prototypeData && renderFeaturesComparisonTable()}
+    </div>
+
+    {/* Модальное окно — оставьте как есть */}
+    {confirmModalVisible && createPortal(
+      <div className={styles.modalOverlay} onClick={cancelRestart}>
+        <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <h3 className={styles.modalTitle}>Повторное получение прототипа?</h3>
+          <p className={styles.modalText}>
+            Вы уверены, что хотите выполнить повторное получение характеристик прототипа?
+          </p>
+          <p className={styles.modalWarning}>
+            Текущие данные будут заменены.
+          </p>
+          <div className={styles.modalButtons}>
+            <button 
+              className={styles.modalCancelButton} 
+              onClick={cancelRestart}
+              type="button"
+            >
+              Отмена
+            </button>
+            <button 
+              className={styles.modalConfirmButton} 
+              onClick={confirmRestart}
+              type="button"
+            >
+              Продолжить
+            </button>
           </div>
-        </div>,
-        document.body
-      )}
-    </>
+        </div>
+      </div>,
+      document.body
+    )}
+  </>
   )
 }
