@@ -34,6 +34,30 @@ class ReferenceService {
       return { task_id: taskId }
     }
 
+    const response1 = await authService.authenticatedFetch(
+        API_REFERENCE_ENDPOINTS.ANALOG_CREATE_LINK(patentId),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ patent_id: patentId }),
+        }
+      )
+
+    const response2 = await authService.authenticatedFetch(
+        API_REFERENCE_ENDPOINTS.ANALOG_CREATE_METADATA(patentId),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ patent_id: patentId }),
+        }
+      )
+
     const response3 = await authService.authenticatedFetch(
       API_REFERENCE_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(patentId),
       {
