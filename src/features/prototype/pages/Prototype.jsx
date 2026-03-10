@@ -6,6 +6,7 @@ import { useToast } from '../../../contexts/ToastContext'
 import { TASK_STATUS } from '../../../services/reference/referenceService'
 import * as XLSX from 'xlsx'
 import styles from '../styles/Prototype.module.css'
+import { SkeletonTable } from '../../../components/Skeleton/SkeletonTable'
 
 const downloadPrototypeExcel = (prototype, patentId) => {
   const headers = ['Номер', 'Название', 'Ссылка', 'Реферат', 'Формула']
@@ -50,21 +51,23 @@ const downloadFeaturesExcel = (prototypeFeatures, patentFeatures, fileName) => {
   limitingFeatures.forEach((feature, idx) => {
     rows.push([
       `${idx + 1}. ${feature}`,
-      limitingPatentFeatures[idx] || '',
+      limitingPatentFeatures[idx] || '-',
       feature
     ])
   })
   
   rows.push(['Отличительные признаки', '', ''])
   
+  const maxDistinguishingLength = Math.max(distinguishingFeatures.length, distinguishingPatentFeatures.length)
+
   // Отличительные признаки
-  distinguishingFeatures.forEach((feature, idx) => {
+  for (let idx = 0; idx < maxDistinguishingLength; idx++) {
     rows.push([
-      `${midpoint + idx + 1}. ${feature}`,
-      distinguishingPatentFeatures[idx] || '',
-      feature
+      `${midpoint + idx + 1}. ${distinguishingFeatures[idx] || '—'}`,
+      distinguishingPatentFeatures[idx] || '—',  
+      distinguishingFeatures[idx] || '—'  
     ])
-  })
+  }
 
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
   worksheet['!cols'] = [
@@ -117,7 +120,8 @@ export default function Prototype() {
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
   const [viewMode, setViewMode] = useState('main')
   const [prevStatus, setPrevStatus] = useState(null)
-  
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const compareTask = getCompareTask(id)
   const prototypeTask = getPrototypeTask(id)
 
@@ -136,6 +140,7 @@ export default function Prototype() {
   const error = prototypeTask?.error
   const prototypeData = prototypeTask?.data
   const isCompleted = prototypeTask?.status === TASK_STATUS.SUCCESS && prototypeData
+  const isLoading = isSubmitting || prototypeTask?.status === TASK_STATUS.RUNNING
 
   useEffect(() => {
     if (prototypeTask?.status !== prevStatus) {
@@ -148,6 +153,13 @@ export default function Prototype() {
     }
   }, [prototypeTask?.status, prototypeTask?.error, prevStatus, showSuccess, showError])
 
+  useEffect(() => {
+    if (prototypeTask?.status === TASK_STATUS.SUCCESS || 
+        prototypeTask?.status === TASK_STATUS.FAILED) {
+      setIsSubmitting(false)
+    }
+  }, [prototypeTask?.status])
+
   const handleGetPrototype = async () => {
     if (!isCompareCompleted) {
       showWarning('Сначала выполните сопоставление патента с аналогами')
@@ -159,10 +171,13 @@ export default function Prototype() {
       return
     }
 
+    setIsSubmitting(true)
+
     try {
       await startPrototypeTask(id)
     } catch (err) {
       showError(err.message || 'Ошибка запуска задачи получения прототипа')
+      setIsSubmitting(false)
     }
   }
 
@@ -301,9 +316,9 @@ export default function Prototype() {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th className={styles.featureHeader}>Признаки</th>
-              <th className={styles.featureHeader}>Признаки патента</th>
-              <th className={styles.featureHeader}>Признаки прототипа</th>
+              <th className={styles.featureHeader}>Признак</th>
+              <th className={styles.featureHeader}>Признак патента</th>
+              <th className={styles.featureHeader}>Признак прототипа</th>
             </tr>
           </thead>
           <tbody>
@@ -323,7 +338,7 @@ export default function Prototype() {
                   {limitingPatentFeatures[idx] || '—'}
                 </td>
                 <td className={styles.featureCell}>
-                  {feature}
+                  {feature || '-'}
                 </td>
               </tr>
             ))}
@@ -334,17 +349,17 @@ export default function Prototype() {
                 Отличительные признаки
               </td>
             </tr>
-            {distinguishingFeatures.map((feature, idx) => (
+            {Array.from({ length: Math.max(distinguishingFeatures.length, distinguishingPatentFeatures.length) }, (_, idx) => (
               <tr key={`distinguishing-${idx}`}>
                 <td className={styles.featureCell}>
                   <span className={styles.featureNumber}>{midpoint + idx + 1}.</span>
-                  {feature}
+                  {distinguishingFeatures[idx] || '—'}
                 </td>
                 <td className={styles.featureCell}>
                   {distinguishingPatentFeatures[idx] || '—'}
                 </td>
                 <td className={styles.featureCell}>
-                  {feature}
+                  {distinguishingFeatures[idx] || '—'}
                 </td>
               </tr>
             ))}
@@ -444,9 +459,9 @@ return (
       {/* Кнопки — только основные */}
       <div className={styles.buttonContainer}>
         <button 
-          className={`${styles.actionButton} ${loading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
+          className={`${styles.actionButton} ${isLoading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
           onClick={handleGetPrototype}
-          disabled={loading}
+          disabled={isLoading}
         >
           Получить характеристики прототипа
         </button>
@@ -458,8 +473,10 @@ return (
         </button>
       </div>
 
+      {isLoading && <SkeletonTable />}
+
       {/* ТАБЛИЦА СРАВНЕНИЯ */}
-      {prototypeData && renderFeaturesComparisonTable()}
+      {prototypeData && !isLoading && renderFeaturesComparisonTable()}
     </div>
 
     {/* Модальное окно — оставьте как есть */}

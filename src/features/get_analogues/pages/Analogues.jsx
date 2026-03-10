@@ -6,6 +6,7 @@ import { useToast } from '../../../contexts/ToastContext'
 import { TASK_STATUS } from '../../../services/reference/referenceService'
 import * as XLSX from 'xlsx'
 import styles from '../styles/Analogues.module.css'
+import { SkeletonTable } from '../../../components/Skeleton/SkeletonTable'
 
 const downloadExcel = (analogs, patentId) => {
   const headers = ['Номер', 'Название', 'Ссылка', 'Реферат', 'Формула']
@@ -40,12 +41,14 @@ export default function Analogues() {
   
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
   const [prevStatus, setPrevStatus] = useState(null)
-  
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const task = getTask(id)
   const loading = task?.status === TASK_STATUS.RUNNING
   const error = task?.error
   const analogsData = task?.data
   const isCompleted = task?.status === TASK_STATUS.SUCCESS && analogsData
+  const isLoading = isSubmitting || task?.status === TASK_STATUS.RUNNING
 
   useEffect(() => {
     if (task?.status !== prevStatus) {
@@ -58,16 +61,25 @@ export default function Analogues() {
     }
   }, [task?.status, task?.error, prevStatus, showSuccess, showError])
 
+  useEffect(() => {
+    if (task?.status === TASK_STATUS.SUCCESS || task?.status === TASK_STATUS.FAILED) {
+      setIsSubmitting(false)
+    }
+  }, [task?.status])
+
   const handleGetAnalogs = async () => {
     if (isCompleted) {
       setConfirmModalVisible(true)
       return
     }
 
+    setIsSubmitting(true)
+
     try {
       await startTask(id)
     } catch (err) {
       showError(err.message || 'Ошибка запуска задачи поиска аналогов')
+      setIsSubmitting(false)
     }
   }
 
@@ -145,9 +157,9 @@ export default function Analogues() {
       <div className={styles.container}>
         <div className={styles.buttonContainer}>
           <button 
-            className={`${styles.actionButton} ${loading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
+            className={`${styles.actionButton} ${isLoading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
             onClick={handleGetAnalogs}
-            disabled={loading}
+            disabled={isLoading}
           >
             Получить аналоги
           </button>
@@ -159,7 +171,9 @@ export default function Analogues() {
           </button>
         </div>
 
-        {analogsData && renderAnalogsTable()}
+        {isLoading && <SkeletonTable />}
+
+        {analogsData && !isLoading && renderAnalogsTable()}
       </div>
 
       {confirmModalVisible && createPortal(

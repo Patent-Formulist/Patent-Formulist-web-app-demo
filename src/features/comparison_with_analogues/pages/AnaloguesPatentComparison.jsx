@@ -6,6 +6,7 @@ import { useToast } from '../../../contexts/ToastContext'
 import { TASK_STATUS } from '../../../services/reference/referenceService'
 import * as XLSX from 'xlsx'
 import styles from '../styles/AnaloguesPatentComparison.module.css'
+import { SkeletonTable } from '../../../components/Skeleton/SkeletonTable'
 
 const TABLE_HEADERS = {
   mainRow: {
@@ -85,7 +86,8 @@ export default function AnaloguesPatentComparison() {
   
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
   const [prevStatus, setPrevStatus] = useState(null)
-  
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const analogTask = getTask(id)
   const task = getCompareTask(id)
   const loading = task?.status === TASK_STATUS.RUNNING
@@ -93,6 +95,7 @@ export default function AnaloguesPatentComparison() {
   const comparisonData = task?.data
   const isCompleted = task?.status === TASK_STATUS.SUCCESS && comparisonData
   const isAnalogCompleted = analogTask?.status === TASK_STATUS.SUCCESS
+  const isLoading = isSubmitting || task?.status === TASK_STATUS.RUNNING
 
   useEffect(() => {
     if (task?.status !== prevStatus) {
@@ -105,6 +108,12 @@ export default function AnaloguesPatentComparison() {
     }
   }, [task?.status, task?.error, prevStatus, showSuccess, showError])
 
+  useEffect(() => {
+    if (task?.status === TASK_STATUS.SUCCESS || task?.status === TASK_STATUS.FAILED) {
+      setIsSubmitting(false)
+    }
+  }, [task?.status])
+
   const handleCompare = async () => {
     if (!isAnalogCompleted) {
       showWarning('Сначала выполните поиск аналогов')
@@ -115,11 +124,14 @@ export default function AnaloguesPatentComparison() {
       setConfirmModalVisible(true)
       return
     }
+
+    setIsSubmitting(true)
     
     try {
       await startCompareTask(id)
     } catch (err) {
       showError(err.message || 'Ошибка запуска задачи сопоставления')
+      setIsSubmitting(false)
     }
   }
 
@@ -243,9 +255,9 @@ export default function AnaloguesPatentComparison() {
       <div className={styles.container}>
         <div className={styles.buttonContainer}>
           <button 
-            className={`${styles.actionButton} ${loading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
+            className={`${styles.actionButton} ${isLoading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
             onClick={handleCompare}
-            disabled={loading}
+            disabled={isLoading}
           >
             Сопоставить патент с аналогами
           </button>
@@ -257,7 +269,9 @@ export default function AnaloguesPatentComparison() {
           </button>
         </div>
 
-        {comparisonData && renderComparisonTable()}
+        {isLoading && <SkeletonTable />}
+
+        {comparisonData && !isLoading && renderComparisonTable()}
       </div>
 
       {confirmModalVisible && createPortal(
