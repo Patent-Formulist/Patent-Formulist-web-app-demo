@@ -34,30 +34,6 @@ class ReferenceService {
       return { task_id: taskId }
     }
 
-    const response1 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.ANALOG_CREATE_LINK(patentId),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ patent_id: patentId }),
-        }
-      )
-
-    const response2 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.ANALOG_CREATE_METADATA(patentId),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ patent_id: patentId }),
-        }
-      )
-
     const response3 = await authService.authenticatedFetch(
       API_REFERENCE_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(patentId),
       {
@@ -206,145 +182,7 @@ class ReferenceService {
         return { task_id: taskId }
       }
 
-      const response = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.ANALOG_CREATE_ATTRIBUTE(patentId),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ patent_id: patentId }),
-        }
-      )
-
-      if (!response.ok) {
-        switch (response.status) {
-          case 404:
-            throw new Error('Аттрибуты не созданы')
-          case 400:
-            throw new Error('Сначала получите аналоги')
-          default:
-            throw new Error('Ошибка создания задачи сравнения')
-        }
-      }
-
-      const response2 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.ANALOG_CREATE_ATTRIBUTE_MATCHING(patentId),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ patent_id: patentId }),
-        }
-      )
-
-      if (!response2.ok) {
-        switch (response.status) {
-          case 404:
-            throw new Error('Аттрибуты не объединенны')
-          case 400:
-            throw new Error('Сначала получите аналоги')
-          default:
-            throw new Error('Ошибка создания задачи сравнения')
-        }
-      }
-
-      const response3 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.PATENT_CREATE_ATTRIBUTE(patentId),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ patent_id: patentId }),
-        }
-      )
-
-      if (!response3.ok) {
-        switch (response.status) {
-          case 404:
-            throw new Error('Патент не найден')
-          case 400:
-            throw new Error('Сначала получите аналоги')
-          default:
-            throw new Error('Ошибка создания задачи сравнения')
-        }
-      }
-
-      const response4 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.PATENT_CREATE_GENERAL_ATTRIBUTE(patentId),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ patent_id: patentId }),
-        }
-      )
-
-      if (!response4.ok) {
-        switch (response.status) {
-          case 404:
-            throw new Error('Патент не найден')
-          case 400:
-            throw new Error('Сначала получите аналоги')
-          default:
-            throw new Error('Ошибка создания задачи сравнения')
-        }
-      }
-
-      const response5 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.ANALOG_CREATE_ATTRIBUTE_CHECKING(patentId),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ patent_id: patentId }),
-        }
-      )
-
-      if (!response5.ok) {
-        switch (response.status) {
-          case 404:
-            throw new Error('Патент не найден')
-          case 400:
-            throw new Error('Сначала получите аналоги')
-          default:
-            throw new Error('Ошибка создания задачи сравнения')
-        }
-      }
-
-      const response6 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.PATENT_CREATE_ATTRIBUTE_CHECKING(patentId),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ patent_id: patentId }),
-        }
-      )
-
-      if (!response6.ok) {
-        switch (response.status) {
-          case 404:
-            throw new Error('Патент не найден')
-          case 400:
-            throw new Error('Сначала получите аналоги')
-          default:
-            throw new Error('Ошибка создания задачи сравнения')
-        }
-      }
-
-      const response7 = await authService.authenticatedFetch(
+      const response1 = await authService.authenticatedFetch(
         API_REFERENCE_ENDPOINTS.PATENT_CREATE_STATISTICS(patentId),
         {
           method: 'POST',
@@ -356,7 +194,7 @@ class ReferenceService {
         }
       )
 
-      if (!response7.ok) {
+      if (!response1.ok) {
         switch (response.status) {
           case 404:
             throw new Error('Патент не найден')
