@@ -4,8 +4,10 @@ import { createPortal } from 'react-dom'
 import { useReference } from '../../../contexts/ReferenceContext'
 import { useToast } from '../../../contexts/ToastContext'
 import { TASK_STATUS } from '../../../services/reference/referenceService'
+import { API_REFERENCE_ENDPOINTS } from '../../../services/apiConfig'
 import * as XLSX from 'xlsx'
 import styles from '../styles/AnaloguesPatentComparison.module.css'
+import authService from "../../../services/auth/authService.js";
 
 const TABLE_HEADERS = {
   mainRow: {
@@ -80,9 +82,10 @@ const downloadExcel = (data, patentId) => {
 
 export default function AnaloguesPatentComparison() {
   const { id } = useParams()
-  const { startCompareTask, getCompareTask, getTask } = useReference()
+  const { startCompareTask, getCompareTask, getTask, updateCompareTask } = useReference()
   const { showWarning, showSuccess, showError } = useToast()
-  
+
+  const [localDataLoaded, setLocalDataLoaded] = useState(false)
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
   const [prevStatus, setPrevStatus] = useState(null)
   
@@ -93,6 +96,74 @@ export default function AnaloguesPatentComparison() {
   const comparisonData = task?.data
   const isCompleted = task?.status === TASK_STATUS.SUCCESS && comparisonData
   const isAnalogCompleted = analogTask?.status === TASK_STATUS.SUCCESS
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Если данные уже загружены из localStorage, пропускаем
+      if (localDataLoaded) return;
+
+      const savedData = localStorage.getItem(`analogs_statistics_${id}`)
+      if (savedData && !task?.data) {
+        try {
+          const data = JSON.parse(savedData)
+          // Данные могут быть обёрнуты в поле analogs или быть сразу объектом
+          const comparisonData = data.analogs || data
+
+          if (updateCompareTask) {
+            updateCompareTask(id, {
+              status: TASK_STATUS.SUCCESS,
+              data: comparisonData,
+              error: null
+            });
+            setLocalDataLoaded(true);
+            showSuccess('Данные сопоставления загружены из кэша');
+          }
+        } catch (e) {
+          console.error('Ошибка парсинга данных из localStorage:', e)
+        }
+        return
+      }
+
+      // Если в localStorage нет — запрашиваем с сервера
+      try {
+        console.log('🌐 Запрашиваем данные сопоставления с сервера')
+        const response = await authService.authenticatedFetch(
+          API_REFERENCE_ENDPOINTS.PATENT_GET_STATISTICS(id),
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+          }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          const comparisonData = data.analogs || data
+
+          // Сохраняем в localStorage для будущих загрузок
+          localStorage.setItem(`analogs_statistics_${id}`, JSON.stringify(comparisonData))
+
+          if (updateCompareTask) {
+            updateCompareTask(id, {
+              status: TASK_STATUS.SUCCESS,
+              data: comparisonData,
+              error: null
+            });
+            setLocalDataLoaded(true);
+            showSuccess('Данные сопоставления загружены с сервера');
+          }
+        } else {
+          console.log('❌ Ответ сервера не OK');
+        }
+      } catch (err) {
+        console.log('❌ Ошибка запроса к серверу:', err)
+      }
+    }
+
+    fetchData()
+  }, [id, task?.data, localDataLoaded, updateCompareTask, showSuccess])
 
   useEffect(() => {
     if (task?.status !== prevStatus) {
@@ -247,7 +318,7 @@ export default function AnaloguesPatentComparison() {
             onClick={handleCompare}
             disabled={loading}
           >
-            Сопоставить патент с аналогами
+            Сопоставить патент с аналогами.
           </button>
           <button 
             className={`${styles.actionButton} ${!isCompleted ? styles.inactive : ''}`}

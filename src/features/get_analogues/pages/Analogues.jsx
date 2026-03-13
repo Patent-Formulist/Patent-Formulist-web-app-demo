@@ -4,8 +4,10 @@ import { createPortal } from 'react-dom'
 import { useReference } from '../../../contexts/ReferenceContext'
 import { useToast } from '../../../contexts/ToastContext'
 import { TASK_STATUS } from '../../../services/reference/referenceService'
+import { API_REFERENCE_ENDPOINTS } from '../../../services/apiConfig'
 import * as XLSX from 'xlsx'
 import styles from '../styles/Analogues.module.css'
+import authService from "../../../services/auth/authService.js";
 
 const downloadExcel = (analogs, patentId) => {
   const headers = ['Номер', 'Название', 'Ссылка', 'Реферат', 'Формула']
@@ -35,9 +37,10 @@ const downloadExcel = (analogs, patentId) => {
 
 export default function Analogues() {
   const { id } = useParams()
-  const { startTask, getTask } = useReference()
+  const { startTask, getTask, updateTask } = useReference()
   const { showWarning, showSuccess, showError } = useToast()
-  
+
+  const [localDataLoaded, setLocalDataLoaded] = useState(false)
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
   const [prevStatus, setPrevStatus] = useState(null)
   
@@ -46,6 +49,66 @@ export default function Analogues() {
   const error = task?.error
   const analogsData = task?.data
   const isCompleted = task?.status === TASK_STATUS.SUCCESS && analogsData
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (localDataLoaded) return;
+
+      const savedData = localStorage.getItem(`analogs_${id}`)
+      if (savedData && !task?.data) {
+        try {
+          const data = JSON.parse(savedData)
+          const analogsData = data.analogs || data
+
+          if (updateTask) {
+            updateTask(id, {
+              status: TASK_STATUS.SUCCESS,
+              data: analogsData,
+              error: null
+            });
+            setLocalDataLoaded(true);
+            showSuccess('Аналоги успешно загружены из кэша');
+          }
+        } catch (e) {
+          console.error('Ошибка парсинга данных:', e)
+        }
+        return
+      }
+
+      try {
+        const response = await authService.authenticatedFetch(
+          API_REFERENCE_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(id),
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+          }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          const analogsData = data.analogs || data
+
+          localStorage.setItem(`analogs_${id}`, JSON.stringify(analogsData))
+
+          if (updateTask) {
+            updateTask(id, {
+              status: TASK_STATUS.SUCCESS,
+              data: analogsData,
+              error: null
+            });
+            showSuccess('Аналоги успешно загружены с сервера');
+          }
+        }
+      } catch (err) {
+        console.log('❌ Данных аналогов на сервере нет')
+      }
+    }
+
+    fetchData()
+  }, [id, task?.data, localDataLoaded, updateTask, showSuccess])
 
   useEffect(() => {
     if (task?.status !== prevStatus) {

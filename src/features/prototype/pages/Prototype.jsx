@@ -4,8 +4,10 @@ import { createPortal } from 'react-dom'
 import { useReference } from '../../../contexts/ReferenceContext'
 import { useToast } from '../../../contexts/ToastContext'
 import { TASK_STATUS } from '../../../services/reference/referenceService'
+import { API_REFERENCE_ENDPOINTS } from '../../../services/apiConfig'
 import * as XLSX from 'xlsx'
 import styles from '../styles/Prototype.module.css'
+import authService from "../../../services/auth/authService.js";
 
 const downloadPrototypeExcel = (prototype, patentId) => {
   const headers = ['Номер', 'Название', 'Ссылка', 'Реферат', 'Формула']
@@ -79,17 +81,17 @@ const downloadPatentOnlyExcel = (patentFeatures, fileName) => {
 
 export default function Prototype() {
   const { id } = useParams()
-  const { getCompareTask, startPrototypeTask, getPrototypeTask } = useReference()
+  const { startPrototypeTask, getPrototypeTask, getCompareTask, updatePrototypeTask } = useReference()
   const { showWarning, showSuccess, showError } = useToast()
-  
+
+  const [localDataLoaded, setLocalDataLoaded] = useState(false)
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
   const [viewMode, setViewMode] = useState('main')
   const [prevStatus, setPrevStatus] = useState(null)
-  
   const compareTask = getCompareTask(id)
   const prototypeTask = getPrototypeTask(id)
 
-    console.log('🔍 [Prototype] id =', id);
+  console.log('🔍 [Prototype] id =', id);
   console.log('🔍 [Prototype] prototypeTask =', prototypeTask);
   console.log('🔍 [Prototype] prototypeTask?.data =', prototypeTask?.data);
   console.log('🔍 [Prototype] localStorage raw =', localStorage.getItem(`analogs_identity_${id}`));
@@ -104,6 +106,74 @@ export default function Prototype() {
   const error = prototypeTask?.error
   const prototypeData = prototypeTask?.data
   const isCompleted = prototypeTask?.status === TASK_STATUS.SUCCESS && prototypeData
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Если данные уже загружены из localStorage, пропускаем
+      if (localDataLoaded) return;
+
+      const savedData = localStorage.getItem(`prototype_${id}`)
+      if (savedData && !prototypeTask?.data) {
+        try {
+          const data = JSON.parse(savedData)
+          // Данные могут быть обёрнуты в поле analogs или быть сразу объектом
+          const prototypeData = data.analogs || data
+
+          if (updatePrototypeTask) {
+            updatePrototypeTask(id, {
+              status: TASK_STATUS.SUCCESS,
+              data: prototypeData,
+              error: null
+            });
+            setLocalDataLoaded(true);
+            showSuccess('Данные прототипа загружены из кэша');
+          }
+        } catch (e) {
+          console.error('Ошибка парсинга данных из localStorage:', e)
+        }
+        return
+      }
+
+      // Если в localStorage нет — запрашиваем с сервера
+      try {
+        console.log('🌐 Запрашиваем данные прототипа с сервера')
+        const response = await authService.authenticatedFetch(
+          API_REFERENCE_ENDPOINTS.PATENT_GET_IDENTITY(id),
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+          }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          const prototypeData = data.analogs || data
+
+          // Сохраняем в localStorage для будущих загрузок
+          localStorage.setItem(`prototype_${id}`, JSON.stringify(prototypeData))
+
+          if (updatePrototypeTask) {
+            updatePrototypeTask(id, {
+              status: TASK_STATUS.SUCCESS,
+              data: prototypeData,
+              error: null
+            });
+            setLocalDataLoaded(true);
+            showSuccess('Данные прототипа загружены с сервера');
+          }
+        } else {
+          console.log('❌ Ответ сервера не OK');
+        }
+      } catch (err) {
+        console.log('❌ Ошибка запроса к серверу:', err)
+      }
+    }
+
+    fetchData()
+  }, [id, prototypeTask?.data, localDataLoaded, updatePrototypeTask, showSuccess])
 
   useEffect(() => {
     if (prototypeTask?.status !== prevStatus) {

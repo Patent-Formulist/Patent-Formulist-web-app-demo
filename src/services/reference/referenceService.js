@@ -195,13 +195,22 @@ class ReferenceService {
       )
 
       if (!response1.ok) {
-        switch (response.status) {
+        switch (response1.status) {
           case 404:
             throw new Error('Патент не найден')
           case 400:
             throw new Error('Сначала получите аналоги')
+          case 408:
+            throw new Error('Превышено время ожидания ответа от сервера. Попробуйте позже')
+          case 504:
+            throw new Error('Сервер не ответил вовремя. Проверьте соединение и повторите попытку')
+          case 503:
+            throw new Error('Сервер временно недоступен. Пожалуйста, повторите попытку позже')
           default:
-            throw new Error('Ошибка создания задачи сравнения')
+            if (response1.status >= 500) {
+              throw new Error(`Ошибка сервера (${response1.status}). Попробуйте позже`)
+            }
+            throw new Error(`Ошибка создания задачи сравнения (${response1.status})`)
         }
       }
 

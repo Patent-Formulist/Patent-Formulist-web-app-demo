@@ -368,17 +368,50 @@ export function ReferenceProvider({ children }) {
     clearPrototypeTask(patentId)
   }, [clearAnalogTask, clearCompareTask, clearPrototypeTask])
 
+  const updateAnalogTask = useCallback((patentId, updates) => {
+    setAnalogTasks(prev => ({
+      ...prev,
+      [patentId]: {
+        ...prev[patentId],
+        ...updates
+      }
+    }))
+  }, [])
+
+  const updateCompareTask = useCallback((patentId, updates) => {
+    setCompareTasks(prev => ({
+      ...prev,
+      [patentId]: {
+        ...prev[patentId],
+        ...updates
+      }
+    }))
+  }, [])
+
+  const updatePrototypeTask = useCallback((patentId, updates) => {
+    setPrototypeTasks(prev => ({
+      ...prev,
+      [patentId]: {
+        ...prev[patentId],
+        ...updates
+      }
+    }))
+  }, [])
+
   return (
     <ReferenceContext.Provider value={{ 
       startTask: startAnalogTask,
       getTask: getAnalogTask, 
       clearTask: clearAnalogTask,
+      updateTask: updateAnalogTask,
       startCompareTask,
       getCompareTask,
       clearCompareTask,
+      updateCompareTask,
       startPrototypeTask,
       getPrototypeTask,
       clearPrototypeTask,
+      updatePrototypeTask,
       clearTaskForPatent,  
       analogTasks,
       compareTasks,
