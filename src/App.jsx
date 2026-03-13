@@ -41,6 +41,8 @@ export default function App() {
       <ReferenceProvider>
         <ToastProvider>
           <Routes>
+            
+            {/* Публичные маршруты (доступны всем) */}
             <Route path='/' element={<WelcomeLayout />}>
               <Route index element={<Welcome />} />
               <Route path='about' element={<About />} />
@@ -49,26 +51,38 @@ export default function App() {
               <Route path='login' element={<LogIn />} />
               <Route path='signin' element={<SignIn />} />
             </Route>
+            
+            {/* Защищённые маршруты (требуется авторизация) */}
             <Route element={<AuthorizedUserRoute />}>
+              
+              {/* Рабочее пространство */}
               <Route path='/workspace' element={<WorkspaceLayout />}>
                 <Route index element={<WorkspaceMain />} />
-                <Route path='documentation' element={<div>Документация</div>}/>
-                <Route path='questions' element={<FAQ />}/>
+                <Route path='documentation' element={<div>Документация</div>} />
+                <Route path='questions' element={<FAQ />} />
                 <Route path='patent-creation' element={<PatentCreation />} />
-                <Route path='patents/:id/edit' element={<PatentEdit />}/>
+                <Route path='patents/:id/edit' element={<PatentEdit />} />
+                
+                {/* Анализ патента (вложенные маршруты) */}
                 <Route path='patents/:id' element={<ReferenceLayout />}>
                   <Route path='analogs' element={<Analogues />} />
                   <Route path='attributes' element={<AnaloguesPatentComparison />} />
                   <Route path='prototype' element={<Prototype />} />
                 </Route>
               </Route>
+              
+              {/* Профиль пользователя */}
               <Route path="/profile" element={<ProfileLayout />}>
                 <Route index element={<ProfileMain />} />
                 <Route path="settings" element={<ProfileSettings />} />
                 <Route path="feedback" element={<div>Обратная связь</div>} />
               </Route>
+              
             </Route>
+            
+            {/* 404*/}
             <Route path='*' element={<NotFound />} />
+            
           </Routes>
         </ToastProvider>
       </ReferenceProvider>

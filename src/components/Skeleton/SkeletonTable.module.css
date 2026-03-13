@@ -1,0 +1,92 @@
+/* Контейнер таблицы */
+.tableWrapper {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.tableContainer {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(49, 100, 146, 1);
+  border-radius: 4px;
+  background: rgba(229, 237, 245, 1);
+  /* ✅ УБРАЛИ min-height: 1000px — пусть высота зависит от контента */
+}
+
+/* ✅ Яркая анимация на всю таблицу */
+.skeletonOverlay {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  right: 0;
+  bottom: 0;
+  width: 200%;
+  background: linear-gradient(
+    90deg,
+    rgba(229, 237, 245, 0) 0%,
+    rgba(255, 255, 255, 0.8) 20%,
+    rgba(200, 210, 220, 0.6) 50%,
+    rgba(255, 255, 255, 0.8) 80%,
+    rgba(229, 237, 245, 0) 100%
+  );
+  animation: shimmer 1.2s infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Таблица */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  position: relative;
+  z-index: 1;
+  table-layout: fixed; /* ✅ Фиксированная ширина колонок */
+}
+
+/* Заголовки - ТЕМНЕЕ */
+.skeletonHeaderCell {
+  background: rgba(180, 200, 220, 1);
+  border-radius: 4px;
+  height: 40px;
+  width: 100%;
+  display: block;
+}
+
+/* Обычные ячейки - СВЕТЛЕЕ */
+.skeletonCell {
+  background: rgba(229, 237, 245, 1);
+  border-radius: 4px;
+  height: 48px;  /* ✅ Фиксированная высота */
+  width: 100%;
+  display: block;
+}
+
+/* Заголовки и ячейки таблицы */
+.table th,
+.table td {
+  padding: 0;  /* ✅ Убрали padding чтобы ячейки не растягивались */
+  border: 1px solid rgba(49, 100, 146, 1);
+  height: 48px;  /* ✅ Фиксированная высота строки */
+  vertical-align: middle;
+}
+
+.table th {
+  height: 40px;  /* ✅ Заголовок чуть меньше */
+}
+
+.table th .skeletonHeaderCell,
+.table td .skeletonCell {
+  background: transparent;
+  height: 100%;
+  width: 100%;
+}

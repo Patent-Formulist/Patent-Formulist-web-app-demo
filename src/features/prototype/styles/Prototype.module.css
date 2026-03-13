@@ -131,6 +131,7 @@
   font-size: 14px;
 }
 
+/* Таблица */
 .tableWrapper {
   margin-top: 16px;
 }
@@ -144,7 +145,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .table thead {
@@ -155,36 +156,89 @@
 }
 
 .table th {
-  padding: 10px 8px;
-  text-align: center;
+  padding: 12px;
+  text-align: left;
   font-weight: 600;
   color: rgba(0, 51, 102, 1);
   border: 1px solid rgba(49, 100, 146, 1);
-  font-size: 11px;
-}
-
-.featureHeader {
-  min-width: 300px;
-  text-align: left !important;
+  font-size: 14px;
 }
 
 .table td {
-  padding: 8px;
+  padding: 12px;
   border: 1px solid rgba(49, 100, 146, 1);
-  text-align: center;
-  font-size: 12px;
+  font-size: 13px;
   color: rgba(0, 51, 102, 1);
-}
-
-.featureCell {
-  text-align: left;
-  font-size: 12px;
-  color: rgba(0, 51, 102, 1);
-  max-width: 300px;
+  vertical-align: top;
+  line-height: 1.5;
 }
 
 .table tbody tr:hover {
   background-color: rgba(229, 237, 245, 0.3);
+}
+
+/* Секции таблицы (ограничительные/отличительные признаки) */
+.sectionRow {
+  background-color: rgba(229, 237, 245, 1);
+}
+
+.sectionTitle {
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(0, 51, 102, 1);
+  padding: 10px 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid rgba(49, 100, 146, 1);
+}
+
+.featureNumber {
+  font-weight: 600;
+  color: rgba(49, 100, 146, 1);
+  margin-right: 8px;
+}
+
+.featureHeader {
+  background-color: rgba(229, 237, 245, 1);
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: rgba(0, 51, 102, 1);
+  border: 1px solid rgba(49, 100, 146, 1);
+  font-size: 14px;
+  width: 33.33%;
+}
+
+.featureCell {
+  padding: 12px;
+  border: 1px solid rgba(49, 100, 146, 1);
+  vertical-align: top;
+  line-height: 1.5;
+  font-size: 13px;
+  color: rgba(0, 51, 102, 1);
+  width: 33.33%;
+  text-align: left;
+}
+
+.numberHeader {
+  background-color: rgba(229, 237, 245, 1);
+  padding: 12px;
+  text-align: center;
+  font-weight: 600;
+  color: rgba(0, 51, 102, 1);
+  border: 1px solid rgba(49, 100, 146, 1);
+  font-size: 14px;
+  width: 60px;
+}
+
+.numberCell {
+  padding: 12px;
+  border: 1px solid rgba(49, 100, 146, 1);
+  text-align: center;
+  font-size: 13px;
+  color: rgba(0, 51, 102, 1);
+  width: 60px;
+  font-weight: 600;
 }
 
 .link {
@@ -197,17 +251,7 @@
   text-decoration: underline;
 }
 
-.numberHeader {
-  min-width: 80px;
-  text-align: center !important;
-}
-
-.numberCell {
-  text-align: center;
-  font-weight: 600;
-  color: rgba(49, 100, 146, 1);
-}
-
+/* Модальное окно */
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -325,3 +369,4 @@
 .modalConfirmButton:active {
   transform: translateY(0);
 }
+
