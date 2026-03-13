@@ -3,6 +3,59 @@ import { MOCK_ANALOGS, MOCK_COMPARISON, MOCK_PROTOTYPES, generateMockTaskId } fr
 import { mockDelay, globalMockTaskManager } from '../mocks/mockUtils'
 import { API_REFERENCE_ENDPOINTS } from '../apiConfig'
 import authService from '../auth/authService'
+import * as XLSX from 'xlsx'
+
+const parseIdentityExcel = (worksheet) => {
+  const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+  
+  if (!data || data.length < 2) {
+    return { prototype: {}, rows: [] }
+  }
+  
+  const prototypeNumber = data[0]?.[2] || 'Unknown'
+  const rows = []
+  let currentSection = null
+  let rowNumber = 1
+  
+  for (let i = 2; i < data.length; i++) {
+    const row = data[i]
+    if (!row || row.every(cell => !cell)) continue
+    
+    const cell1 = row[0]?.toString()?.trim()
+    const cell2 = row[1]?.toString()?.trim()
+    const cell3 = row[2]?.toString()?.trim()
+    
+    if (cell1?.includes('Ограничительные признаки')) {
+      currentSection = 'limiting'
+      continue
+    }
+    if (cell1?.includes('Отличительные признаки')) {
+      currentSection = 'distinguishing'
+      continue
+    }
+    
+    if (!cell1 && !cell2 && !cell3) continue
+    
+    const featureText = cell1?.replace(/^\d+\.\s*/, '') || ''
+    const patentFeature = cell2 === '-' || !cell2 ? null : cell2
+    const prototypeFeature = cell3 === '-' || !cell3 ? null : cell3
+    
+    if (!patentFeature && !prototypeFeature) continue
+    
+    rows.push({
+      section: currentSection,
+      row_number: rowNumber++,
+      feature: featureText,
+      patent_feature: patentFeature,
+      prototype_feature: prototypeFeature
+    })
+  }
+  
+  return {
+    prototype: { number: prototypeNumber, title: '', link: '', abstract: '', claims: '' },
+    rows
+  }
+}
 
 export const TASK_STATUS = {
   RUNNING: 'running',
@@ -511,31 +564,46 @@ class ReferenceService {
     // 2. НЕ ОФЛАЙН РЕЖИМ
     console.log('🌐 Запрашиваем данные прототипа с сервера для patentId:', patentId)
 
-    const response = await authService.authenticatedFetch(
-      API_REFERENCE_ENDPOINTS.PATENT_GET_IDENTITY(patentId),
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
-        },
+    try {
+      const response = await authService.authenticatedFetch(
+        API_REFERENCE_ENDPOINTS.PATENT_GET_IDENTITY(patentId),
+        {
+          method: 'GET',
+          headers: {
+            Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Ошибка ${response.status}: ${response.statusText}`)
       }
-    )
 
-    if (!response.ok) {
-      throw new Error('Ошибка получения результата прототипа')
+      // 🔹 Парсим Excel
+      const blob = await response.blob()
+      const arrayBuffer = await blob.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+
+      const parsedData = parseIdentityExcel(worksheet)
+      console.log('📊 Распарсенные данные прототипа:', parsedData)
+
+      // 🔹 Сохраняем в localStorage
+      if (patentId && parsedData) {
+        localStorage.setItem(`analogs_identity_${patentId}`, JSON.stringify(parsedData))
+      }
+
+      return {
+        status: TASK_STATUS.SUCCESS,
+        message: 'Готово',
+        task_id: taskId,
+        data: parsedData
+      }
+
+    } catch (error) {
+      console.error('❌ Ошибка получения/парсинга прототипа:', error)
+      throw new Error('Ошибка получения данных прототипа: ' + error.message)
     }
-
-    const data = await response.json()
-    console.log('📊 Получены данные прототипа от сервера:', data)
-
-    // Сохраняем полученные данные в localStorage
-    if (patentId && data) {
-      localStorage.setItem(`analogs_identity_${patentId}`, JSON.stringify(data))
-      console.log('💾 Данные прототипа сохранены в localStorage с ключом:', `analogs_identity_${patentId}`)
-    }
-
-    return data
   }
 
   async setPrototype(patentId, prototypeNumber) {

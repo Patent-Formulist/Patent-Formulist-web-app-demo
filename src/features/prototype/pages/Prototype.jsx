@@ -242,30 +242,31 @@ export default function Prototype() {
   }
 
   const handleDownloadPrototype = () => {
-  if (!isCompleted) {
-    showWarning('Сначала получите характеристики прототипа')
-    return
-  }
+  // 🔹 Новый формат: проверяем rows
+    if (!isCompleted || !prototypeData?.rows || prototypeData.rows.length === 0) {
+      showWarning('Сначала получите характеристики прототипа')
+      return
+    }
 
-  if (!prototypeData?.prototype_features || !prototypeData?.patent_features) {
-    showWarning('Данные признаков недоступны')
-    return
-  }
+    try {
+      // 🔹 Преобразуем rows в массивы для downloadFeaturesExcel
+      const prototypeFeatures = prototypeData.rows.map(r => r.feature || '')
+      const patentFeatures = prototypeData.rows.map(r => r.patent_feature || '')
 
-  try {
-    downloadFeaturesExcel(
-      prototypeData.prototype_features,
-      prototypeData.patent_features,
-      `prototype_comparison_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
-    )
-    showSuccess('Таблица сравнения признаков успешно скачана')
-  } catch (err) {
-    showError('Ошибка при скачивании таблицы сравнения')
+      downloadFeaturesExcel(
+        prototypeFeatures,
+        patentFeatures,
+        `prototype_comparison_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      )
+      showSuccess('Таблица сравнения признаков успешно скачана')
+    } catch (err) {
+      showError('Ошибка при скачивании таблицы сравнения')
+    }
   }
-}
 
   const handleGetFeatures = () => {
-    if (!prototypeData?.prototype_features || !prototypeData?.patent_features) {
+  // 🔹 Новый формат: проверяем rows
+    if (!prototypeData?.rows || prototypeData.rows.length === 0) {
       showWarning('Сначала получите характеристики прототипа')
       return
     }
@@ -293,14 +294,19 @@ export default function Prototype() {
   }
 
   const handleDownloadAllFeatures = () => {
-    if (!prototypeData?.prototype_features || !prototypeData?.patent_features) {
+    if (!prototypeData?.rows || prototypeData.rows.length === 0) {
       showWarning('Данные признаков недоступны')
       return
     }
+
     try {
+      // 🔹 Преобразуем rows в массивы
+      const prototypeFeatures = prototypeData.rows.map(r => r.feature || '')
+      const patentFeatures = prototypeData.rows.map(r => r.patent_feature || '')
+
       downloadFeaturesExcel(
-        prototypeData.prototype_features,
-        prototypeData.patent_features,
+        prototypeFeatures,
+        patentFeatures,
         `features_all_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
       )
       showSuccess('Признаки патента и прототипа успешно скачаны')
@@ -310,13 +316,20 @@ export default function Prototype() {
   }
 
   const handleDownloadPrototypeFeatures = () => {
-    if (!prototypeData?.prototype_features) {
+  // 🔹 Новый формат: проверяем rows
+    if (!prototypeData?.rows || prototypeData.rows.length === 0) {
       showWarning('Данные признаков прототипа недоступны')
       return
     }
+
     try {
+      // 🔹 Извлекаем только признаки прототипа из rows
+      const prototypeFeatures = prototypeData.rows
+        .map(r => r.feature || '')
+        .filter(f => f !== '')  // Убираем пустые
+
       downloadPrototypeOnlyExcel(
-        prototypeData.prototype_features,
+        prototypeFeatures,
         `features_prototype_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
       )
       showSuccess('Признаки прототипа успешно скачаны')
@@ -326,13 +339,19 @@ export default function Prototype() {
   }
 
   const handleDownloadPatentFeatures = () => {
-    if (!prototypeData?.patent_features) {
+    if (!prototypeData?.rows || prototypeData.rows.length === 0) {
       showWarning('Данные признаков патента недоступны')
       return
     }
+
     try {
+      // 🔹 Извлекаем только признаки патента из rows (убираем null/пустые)
+      const patentFeatures = prototypeData.rows
+        .map(r => r.patent_feature || '')
+        .filter(f => f !== '')  // Убираем пустые
+
       downloadPatentOnlyExcel(
-        prototypeData.patent_features,
+        patentFeatures,
         `features_patent_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
       )
       showSuccess('Признаки патента успешно скачаны')
@@ -342,80 +361,84 @@ export default function Prototype() {
   }
 
   const renderFeaturesComparisonTable = () => {
-  if (!prototypeData?.prototype_features || !prototypeData?.patent_features) {
-    return null
-  }
+  // 🔹 Новый формат: проверяем rows вместо отдельных массивов
+    if (!prototypeData?.rows || prototypeData.rows.length === 0) {
+      return null
+    }
 
-  const { prototype_features, patent_features } = prototypeData
+    const { rows } = prototypeData
 
-  // Разделяем признаки на ограничительные и отличительные
-  // (первая половина - ограничительные, вторая - отличительные)
-  const midpoint = Math.ceil(prototype_features.length / 2)
-  const limitingFeatures = prototype_features.slice(0, midpoint)
-  const distinguishingFeatures = prototype_features.slice(midpoint)
+    // 🔹 Разделяем на секции
+    const limitingRows = rows.filter(r => r.section === 'limiting')
+    const distinguishingRows = rows.filter(r => r.section === 'distinguishing')
 
-  const limitingPatentFeatures = patent_features.slice(0, midpoint)
-  const distinguishingPatentFeatures = patent_features.slice(midpoint)
-
-  return (
-    <div className={styles.tableWrapper}>
-      <div className={styles.tableContainer}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.featureHeader}>Признак</th>
-              <th className={styles.featureHeader}>Признак патента</th>
-              <th className={styles.featureHeader}>Признак прототипа</th>
-            </tr>
-          </thead>
-          <tbody>
-            {/* Ограничительные признаки */}
-            <tr className={styles.sectionRow}>
-              <td colSpan="3" className={styles.sectionTitle}>
-                Ограничительные признаки
-              </td>
-            </tr>
-            {limitingFeatures.map((feature, idx) => (
-              <tr key={`limiting-${idx}`}>
-                <td className={styles.featureCell}>
-                  <span className={styles.featureNumber}>{idx + 1}.</span>
-                  {feature}
-                </td>
-                <td className={styles.featureCell}>
-                  {limitingPatentFeatures[idx] || '—'}
-                </td>
-                <td className={styles.featureCell}>
-                  {feature || '-'}
-                </td>
+    return (
+      <div className={styles.tableWrapper}>
+        <div className={styles.tableContainer}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.featureHeader}>Признак</th>
+                <th className={styles.featureHeader}>Признак патента</th>
+                <th className={styles.featureHeader}>Признак прототипа</th>
               </tr>
-            ))}
+            </thead>
+            <tbody>
+              {/* Ограничительные признаки */}
+              {limitingRows.length > 0 && (
+                <>
+                  <tr className={styles.sectionRow}>
+                    <td colSpan="3" className={styles.sectionTitle}>
+                      Ограничительные признаки
+                    </td>
+                  </tr>
+                  {limitingRows.map((row) => (
+                    <tr key={`limiting-${row.row_number}`}>
+                      <td className={styles.featureCell}>
+                        <span className={styles.featureNumber}>{row.row_number}.</span>
+                        {row.feature}
+                      </td>
+                      <td className={styles.featureCell}>
+                        {row.patent_feature || '—'}
+                      </td>
+                      <td className={styles.featureCell}>
+                        {row.prototype_feature || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              )}
 
-            {/* Отличительные признаки */}
-            <tr className={styles.sectionRow}>
-              <td colSpan="3" className={styles.sectionTitle}>
-                Отличительные признаки
-              </td>
-            </tr>
-            {Array.from({ length: Math.max(distinguishingFeatures.length, distinguishingPatentFeatures.length) }, (_, idx) => (
-              <tr key={`distinguishing-${idx}`}>
-                <td className={styles.featureCell}>
-                  <span className={styles.featureNumber}>{midpoint + idx + 1}.</span>
-                  {distinguishingFeatures[idx] || '—'}
-                </td>
-                <td className={styles.featureCell}>
-                  {distinguishingPatentFeatures[idx] || '—'}
-                </td>
-                <td className={styles.featureCell}>
-                  {distinguishingFeatures[idx] || '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              {/* Отличительные признаки */}
+              {distinguishingRows.length > 0 && (
+                <>
+                  <tr className={styles.sectionRow}>
+                    <td colSpan="3" className={styles.sectionTitle}>
+                      Отличительные признаки
+                    </td>
+                  </tr>
+                  {distinguishingRows.map((row) => (
+                    <tr key={`distinguishing-${row.row_number}`}>
+                      <td className={styles.featureCell}>
+                        <span className={styles.featureNumber}>{row.row_number}.</span>
+                        {row.feature}
+                      </td>
+                      <td className={styles.featureCell}>
+                        {row.patent_feature || '—'}
+                      </td>
+                      <td className={styles.featureCell}>
+                        {row.prototype_feature || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
   const renderFeaturesAll = () => {
     if (!prototypeData?.prototype_features || !prototypeData?.patent_features) return null
