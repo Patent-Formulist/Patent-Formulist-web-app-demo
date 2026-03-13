@@ -55,12 +55,13 @@ const { startTask, getTask, updateTask } = useReference()
   const isCompleted = task?.status === TASK_STATUS.SUCCESS && analogsData
   const isLoading = isSubmitting || task?.status === TASK_STATUS.RUNNING
 
-useEffect(() => {
+  useEffect(() => {
     const fetchData = async () => {
-      if (localDataLoaded) return;
+      // Если данные уже загружены (локально или в контексте) — выходим
+      if (localDataLoaded || task?.data) return;
 
       const savedData = localStorage.getItem(`analogs_${id}`)
-      if (savedData && !task?.data) {
+      if (savedData) {
         try {
           const data = JSON.parse(savedData)
           const analogsData = data.analogs || data
@@ -104,6 +105,7 @@ useEffect(() => {
               data: analogsData,
               error: null
             });
+            setLocalDataLoaded(true);
             showSuccess('Аналоги успешно загружены с сервера');
           }
         }
@@ -113,7 +115,7 @@ useEffect(() => {
     }
 
     fetchData()
-  }, [id, task?.data, localDataLoaded, updateTask, showSuccess])
+  }, [id, localDataLoaded, updateTask, showSuccess])
 
   useEffect(() => {
     if (task?.status !== prevStatus) {

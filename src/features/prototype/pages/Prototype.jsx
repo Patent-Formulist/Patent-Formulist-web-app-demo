@@ -163,7 +163,7 @@ export default function Prototype() {
 
         if (response.ok) {
           const data = await response.json()
-          const prototypeData = data.analogs || data
+          const prototypeData = data[id] || data.analogs || data
 
           // Сохраняем в localStorage для будущих загрузок
           localStorage.setItem(`prototype_${id}`, JSON.stringify(prototypeData))
