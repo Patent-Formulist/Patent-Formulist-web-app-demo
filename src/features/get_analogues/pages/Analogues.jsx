@@ -9,13 +9,17 @@ import styles from '../styles/Analogues.module.css'
 import { SkeletonTable } from '../../../components/Skeleton/SkeletonTable'
 
 const downloadExcel = (analogs, patentId) => {
+  if (!analogs || typeof analogs !== 'object') {
+    throw new Error('Неверный формат данных для скачивания')
+  }
+
   const headers = ['Номер', 'Название', 'Ссылка', 'Реферат', 'Формула']
   const rows = Object.values(analogs).map(analog => [
-    analog.number,
-    analog.title,
-    analog.link,
-    analog.abstract,
-    analog.claims
+    analog.number || analog.analog_num || '',
+    analog.title || '',
+    analog.link || analog.analog_link || '',
+    analog.abstract || '',
+    analog.claims || ''
   ])
 
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
@@ -103,9 +107,14 @@ export default function Analogues() {
     }
 
     try {
-      downloadExcel(analogsData, id)
+      // 🔹 РАСПАКОВКА: если данные в обёртке { "2": {...} }
+      const dataToDownload = analogsData[id] || analogsData
+      console.log('📦 Скачиваем аналоги:', dataToDownload)
+      
+      downloadExcel(dataToDownload, id)
       showSuccess('Аналоги успешно скачаны')
     } catch (err) {
+      console.error('❌ Ошибка скачивания:', err)
       showError('Ошибка при скачивании аналогов')
     }
   }

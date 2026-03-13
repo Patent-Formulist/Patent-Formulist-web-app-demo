@@ -21,6 +21,9 @@ const TABLE_HEADERS = {
 }
 
 const downloadExcel = (data, patentId) => {
+  if (!data?.features || !data?.analogs) {
+    throw new Error('Неверный формат данных для скачивания')
+  }
   const { features, analogs, comparison, frequency, user_patent, user_comparison, analog_counts } = data
 
   const headerRow1 = [
@@ -155,9 +158,14 @@ export default function AnaloguesPatentComparison() {
     }
 
     try {
-      downloadExcel(comparisonData, id)
+      // 🔹 РАСПАКОВКА: если данные в обёртке { "2": {...} }
+      const dataToDownload = comparisonData[id] || comparisonData
+      console.log('📦 Скачиваем данные:', dataToDownload)
+      
+      downloadExcel(dataToDownload, id)
       showSuccess('Таблица сопоставления успешно скачана')
     } catch (err) {
+      console.error('❌ Ошибка скачивания:', err)
       showError('Ошибка при скачивании таблицы сопоставления')
     }
   }
