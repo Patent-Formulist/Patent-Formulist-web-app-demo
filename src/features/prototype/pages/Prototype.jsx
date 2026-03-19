@@ -4,49 +4,25 @@ import { createPortal } from 'react-dom'
 import { useReference } from '../../../contexts/ReferenceContext'
 import { useToast } from '../../../contexts/ToastContext'
 import { TASK_STATUS } from '../../../services/reference/referenceService'
+import { API_REFERENCE_ENDPOINTS } from '../../../services/apiConfig'
 import * as XLSX from 'xlsx'
 import styles from '../styles/Prototype.module.css'
+import authService from "../../../services/auth/authService.js";
 import { SkeletonTable } from '../../../components/Skeleton/SkeletonTable'
-
-const downloadPrototypeExcel = (prototype, patentId) => {
-  const headers = ['Номер', 'Название', 'Ссылка', 'Реферат', 'Формула']
-  const row = [
-    prototype.number || '',
-    prototype.title || '',
-    prototype.link || '',
-    prototype.abstract || '',
-    prototype.claims || ''
-  ]
-
-  const worksheet = XLSX.utils.aoa_to_sheet([headers, row])
-  worksheet['!cols'] = [
-    { wch: 15 },
-    { wch: 40 },
-    { wch: 50 },
-    { wch: 80 },
-    { wch: 80 }
-  ]
-
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Прототип')
-
-  const fileName = `prototype_${patentId}_${new Date().toISOString().slice(0, 10)}.xlsx`
-  XLSX.writeFile(workbook, fileName)
-}
 
 const downloadFeaturesExcel = (prototypeFeatures, patentFeatures, fileName) => {
   const headers = ['', 'Признаки патента', 'Признаки прототипа']
   const rows = []
-  
+
   // Разделяем на секции
   const midpoint = Math.ceil(prototypeFeatures.length / 2)
   const limitingFeatures = prototypeFeatures.slice(0, midpoint)
   const distinguishingFeatures = prototypeFeatures.slice(midpoint)
   const limitingPatentFeatures = patentFeatures.slice(0, midpoint)
   const distinguishingPatentFeatures = patentFeatures.slice(midpoint)
-  
+
   rows.push(['Ограничительные признаки', '', ''])
-  
+
   // Ограничительные признаки
   limitingFeatures.forEach((feature, idx) => {
     rows.push([
@@ -55,17 +31,17 @@ const downloadFeaturesExcel = (prototypeFeatures, patentFeatures, fileName) => {
       feature
     ])
   })
-  
+
   rows.push(['Отличительные признаки', '', ''])
-  
+
   const maxDistinguishingLength = Math.max(distinguishingFeatures.length, distinguishingPatentFeatures.length)
 
   // Отличительные признаки
   for (let idx = 0; idx < maxDistinguishingLength; idx++) {
     rows.push([
       `${midpoint + idx + 1}. ${distinguishingFeatures[idx] || '—'}`,
-      distinguishingPatentFeatures[idx] || '—',  
-      distinguishingFeatures[idx] || '—'  
+      distinguishingPatentFeatures[idx] || '—',
+      distinguishingFeatures[idx] || '—'
     ])
   }
 
@@ -75,12 +51,12 @@ const downloadFeaturesExcel = (prototypeFeatures, patentFeatures, fileName) => {
     { wch: 60 },
     { wch: 60 }
   ]
-  
+
   // Объединяем ячейки для заголовков секций
   const merges = []
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }) // Ограничительные
   merges.push({ s: { r: 1 + limitingFeatures.length + 1, c: 0 }, e: { r: 1 + limitingFeatures.length + 1, c: 2 } }) // Отличительные
-  
+
   worksheet['!merges'] = merges
 
   const workbook = XLSX.utils.book_new()
@@ -114,13 +90,14 @@ const downloadPatentOnlyExcel = (patentFeatures, fileName) => {
 
 export default function Prototype() {
   const { id } = useParams()
-  const { getCompareTask, startPrototypeTask, getPrototypeTask } = useReference()
+  const { startPrototypeTask, getPrototypeTask, getCompareTask, updatePrototypeTask } = useReference()
   const { showWarning, showSuccess, showError } = useToast()
-  
+
+  const [localDataLoaded, setLocalDataLoaded] = useState(false)
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
   const [viewMode, setViewMode] = useState('main')
   const [prevStatus, setPrevStatus] = useState(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
   const compareTask = getCompareTask(id)
   const prototypeTask = getPrototypeTask(id)
@@ -142,6 +119,75 @@ export default function Prototype() {
   const isCompleted = prototypeTask?.status === TASK_STATUS.SUCCESS && prototypeData
   const isLoading = isSubmitting || prototypeTask?.status === TASK_STATUS.RUNNING
 
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Если данные уже загружены из localStorage, пропускаем
+      if (localDataLoaded) return;
+
+      const savedData = localStorage.getItem(`prototype_${id}`)
+      if (savedData && !prototypeTask?.data) {
+        try {
+          const data = JSON.parse(savedData)
+          // Данные могут быть обёрнуты в поле analogs или быть сразу объектом
+          const prototypeData = data.analogs || data
+
+          if (updatePrototypeTask) {
+            updatePrototypeTask(id, {
+              status: TASK_STATUS.SUCCESS,
+              data: prototypeData,
+              error: null
+            });
+            setLocalDataLoaded(true);
+            showSuccess('Данные прототипа загружены из кэша');
+          }
+        } catch (e) {
+          console.error('Ошибка парсинга данных из localStorage:', e)
+        }
+        return
+      }
+
+      // Если в localStorage нет — запрашиваем с сервера
+      try {
+        console.log('🌐 Запрашиваем данные прототипа с сервера')
+        const response = await authService.authenticatedFetch(
+          API_REFERENCE_ENDPOINTS.PATENT_GET_IDENTITY(id),
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+          }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          const prototypeData = data.analogs || data
+
+          // Сохраняем в localStorage для будущих загрузок
+          localStorage.setItem(`prototype_${id}`, JSON.stringify(prototypeData))
+
+          if (updatePrototypeTask) {
+            updatePrototypeTask(id, {
+              status: TASK_STATUS.SUCCESS,
+              data: prototypeData,
+              error: null
+            });
+            setLocalDataLoaded(true);
+            showSuccess('Данные прототипа загружены с сервера');
+          }
+        } else {
+          console.log('❌ Ответ сервера не OK');
+        }
+      } catch (err) {
+        console.log('❌ Ошибка запроса к серверу:', err)
+      }
+    }
+
+    fetchData()
+  }, [id, prototypeTask?.data, localDataLoaded, updatePrototypeTask, showSuccess])
+
   useEffect(() => {
     if (prototypeTask?.status !== prevStatus) {
       if (prototypeTask?.status === TASK_STATUS.SUCCESS) {
@@ -154,7 +200,7 @@ export default function Prototype() {
   }, [prototypeTask?.status, prototypeTask?.error, prevStatus, showSuccess, showError])
 
   useEffect(() => {
-    if (prototypeTask?.status === TASK_STATUS.SUCCESS || 
+    if (prototypeTask?.status === TASK_STATUS.SUCCESS ||
         prototypeTask?.status === TASK_STATUS.FAILED) {
       setIsSubmitting(false)
     }
@@ -173,11 +219,12 @@ export default function Prototype() {
 
     setIsSubmitting(true)
 
+
     try {
       await startPrototypeTask(id)
     } catch (err) {
       showError(err.message || 'Ошибка запуска задачи получения прототипа')
-      setIsSubmitting(false)
+        setIsSubmitting(false)
     }
   }
 
@@ -200,12 +247,12 @@ export default function Prototype() {
       showWarning('Сначала получите характеристики прототипа')
       return
     }
-    
+
     try {
       // 🔹 Преобразуем rows в массивы для downloadFeaturesExcel
       const prototypeFeatures = prototypeData.rows.map(r => r.feature || '')
       const patentFeatures = prototypeData.rows.map(r => r.patent_feature || '')
-      
+
       downloadFeaturesExcel(
         prototypeFeatures,
         patentFeatures,
@@ -251,12 +298,12 @@ export default function Prototype() {
       showWarning('Данные признаков недоступны')
       return
     }
-    
+
     try {
       // 🔹 Преобразуем rows в массивы
       const prototypeFeatures = prototypeData.rows.map(r => r.feature || '')
       const patentFeatures = prototypeData.rows.map(r => r.patent_feature || '')
-      
+
       downloadFeaturesExcel(
         prototypeFeatures,
         patentFeatures,
@@ -274,13 +321,13 @@ export default function Prototype() {
       showWarning('Данные признаков прототипа недоступны')
       return
     }
-    
+
     try {
       // 🔹 Извлекаем только признаки прототипа из rows
       const prototypeFeatures = prototypeData.rows
         .map(r => r.feature || '')
         .filter(f => f !== '')  // Убираем пустые
-      
+
       downloadPrototypeOnlyExcel(
         prototypeFeatures,
         `features_prototype_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
@@ -296,13 +343,13 @@ export default function Prototype() {
       showWarning('Данные признаков патента недоступны')
       return
     }
-    
+
     try {
       // 🔹 Извлекаем только признаки патента из rows (убираем null/пустые)
       const patentFeatures = prototypeData.rows
         .map(r => r.patent_feature || '')
         .filter(f => f !== '')  // Убираем пустые
-      
+
       downloadPatentOnlyExcel(
         patentFeatures,
         `features_patent_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
@@ -320,7 +367,7 @@ export default function Prototype() {
     }
 
     const { rows } = prototypeData
-    
+
     // 🔹 Разделяем на секции
     const limitingRows = rows.filter(r => r.section === 'limiting')
     const distinguishingRows = rows.filter(r => r.section === 'distinguishing')
@@ -361,7 +408,7 @@ export default function Prototype() {
                   ))}
                 </>
               )}
-              
+
               {/* Отличительные признаки */}
               {distinguishingRows.length > 0 && (
                 <>
@@ -481,14 +528,14 @@ return (
     <div className={styles.container}>
       {/* Кнопки — только основные */}
       <div className={styles.buttonContainer}>
-        <button 
+        <button
           className={`${styles.actionButton} ${isLoading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
           onClick={handleGetPrototype}
           disabled={isLoading}
         >
           Получить характеристики прототипа
         </button>
-        <button 
+        <button
           className={`${styles.actionButton} ${!isCompleted ? styles.inactive : ''}`}
           onClick={handleDownloadPrototype}
         >
@@ -514,15 +561,15 @@ return (
             Текущие данные будут заменены.
           </p>
           <div className={styles.modalButtons}>
-            <button 
-              className={styles.modalCancelButton} 
+            <button
+              className={styles.modalCancelButton}
               onClick={cancelRestart}
               type="button"
             >
               Отмена
             </button>
-            <button 
-              className={styles.modalConfirmButton} 
+            <button
+              className={styles.modalConfirmButton}
               onClick={confirmRestart}
               type="button"
             >
@@ -536,3 +583,4 @@ return (
   </>
   )
 }
+

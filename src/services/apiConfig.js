@@ -2,7 +2,7 @@ import { APP_CONFIG } from './appConfig'
 
 const URL = APP_CONFIG.USE_OFFLINE_MODE 
   ? 'mock://localhost/api/v1'
-  : 'http://localhost:8080/api/v1'
+  : 'http://formulinked.ru/api/v1'
 
 export const API_AUTH_ENDPOINTS = {
   LOGIN: `${URL}/users/login`,
