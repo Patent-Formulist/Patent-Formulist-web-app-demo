@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useReference } from '../../../contexts/ReferenceContext'
 import { useToast } from '../../../contexts/ToastContext'
 import { TASK_STATUS } from '../../../services/reference/referenceService'
-import { API_REFERENCE_ENDPOINTS } from '../../../services/apiConfig'
+import { API_PROCESSOR_ENDPOINTS } from '../../../services/apiConfig'
 import * as XLSX from 'xlsx'
 import styles from '../styles/Analogues.module.css'
 import authService from "../../../services/auth/authService.js";
@@ -83,7 +83,7 @@ const { startTask, getTask, updateTask } = useReference()
 
       try {
         const response = await authService.authenticatedFetch(
-          API_REFERENCE_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(id),
+          API_PROCESSOR_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(id),
           {
             method: 'GET',
             headers: {

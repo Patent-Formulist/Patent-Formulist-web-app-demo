@@ -29,7 +29,10 @@ class ProfileService {
     )
 
     if (!response.ok) {
-      throw new Error('Ошибка загрузки профиля')
+      if (response.status === 501 || response.status === 503) {
+        throw new Error('В данный момент информацию о пользователе недоступна');
+      }
+      throw new Error('Ошибка загрузки профиля');
     }
 
     const data = await response.json()
@@ -65,7 +68,10 @@ class ProfileService {
     )
 
     if (!response.ok) {
-      throw new Error('Ошибка обновления профиля')
+      if (response.status === 501 || response.status === 503) {
+        throw new Error('В данный момент информацию о пользователе недоступна');
+      }
+      throw new Error('Ошибка загрузки профиля');
     }
 
     const data = await response.json()
@@ -98,7 +104,10 @@ class ProfileService {
     )
 
     if (!response.ok) {
-      throw new Error('Ошибка загрузки аватара')
+      if (response.status === 501 || response.status === 503) {
+        throw new Error('В данный момент информацию о пользователе недоступна');
+      }
+      throw new Error('Ошибка загрузки профиля');
     }
 
     const data = await response.json()
@@ -124,7 +133,10 @@ class ProfileService {
     )
 
     if (!response.ok) {
-      throw new Error('Ошибка загрузки настроек')
+      if (response.status === 501 || response.status === 503) {
+        throw new Error('В данный момент информацию о пользователе недоступна');
+      }
+      throw new Error('Ошибка загрузки профиля');
     }
 
     const data = await response.json()
@@ -160,7 +172,10 @@ class ProfileService {
     )
 
     if (!response.ok) {
-      throw new Error('Ошибка обновления настроек')
+      if (response.status === 501 || response.status === 503) {
+        throw new Error('В данный момент информацию о пользователе недоступна');
+      }
+      throw new Error('Ошибка загрузки профиля');
     }
 
     const data = await response.json()
@@ -182,7 +197,10 @@ class ProfileService {
     )
 
     if (!response.ok) {
-      throw new Error('Ошибка загрузки списка моделей')
+      if (response.status === 501 || response.status === 503) {
+        throw new Error('В данный момент информацию о пользователе недоступна');
+      }
+      throw new Error('Ошибка загрузки профиля');
     }
 
     const data = await response.json()

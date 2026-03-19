@@ -1,7 +1,7 @@
 import { APP_CONFIG } from '../appConfig'
 import { MOCK_ANALOGS, MOCK_COMPARISON, MOCK_PROTOTYPES, generateMockTaskId } from '../mocks/mockData'
 import { mockDelay, globalMockTaskManager } from '../mocks/mockUtils'
-import { API_REFERENCE_ENDPOINTS } from '../apiConfig'
+import { API_PROCESSOR_ENDPOINTS } from '../apiConfig'
 import authService from '../auth/authService'
 import * as XLSX from 'xlsx'
 
@@ -88,7 +88,7 @@ class ReferenceService {
     }
 
     const response3 = await authService.authenticatedFetch(
-      API_REFERENCE_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(patentId),
+      API_PROCESSOR_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(patentId),
       {
         method: 'GET',
         headers: {
@@ -199,7 +199,7 @@ class ReferenceService {
     console.log('🌐 Запрашиваем данные с сервера для taskId:', taskId)
 
     const response = await authService.authenticatedFetch(
-      API_REFERENCE_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(patentId), // 👈 ЭТОТ ЗАПРОС ТЕПЕРЬ БУДЕТ ТОЛЬКО ПРИ ОТСУТСТВИИ ДАННЫХ
+      API_PROCESSOR_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(patentId), // 👈 ЭТОТ ЗАПРОС ТЕПЕРЬ БУДЕТ ТОЛЬКО ПРИ ОТСУТСТВИИ ДАННЫХ
       {
         method: 'GET',
         headers: { Accept: 'application/json' },
@@ -236,7 +236,7 @@ class ReferenceService {
       }
 
       const response1 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.PATENT_CREATE_STATISTICS(patentId),
+        API_PROCESSOR_ENDPOINTS.PATENT_CREATE_STATISTICS(patentId),
         {
           method: 'POST',
           headers: {
@@ -268,7 +268,7 @@ class ReferenceService {
       }
 
       const response8 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.PATENT_GET_STATISTICS(patentId),
+        API_PROCESSOR_ENDPOINTS.PATENT_GET_STATISTICS(patentId),
         {
           method: 'GET',
           headers: {
@@ -386,7 +386,7 @@ class ReferenceService {
     console.log('🌐 Запрашиваем данные статистики с сервера для patentId:', patentId)
 
     const response = await authService.authenticatedFetch(
-      API_REFERENCE_ENDPOINTS.PATENT_GET_STATISTICS(patentId),
+      API_PROCESSOR_ENDPOINTS.PATENT_GET_STATISTICS(patentId),
       {
         method: 'GET',
         headers: {
@@ -428,7 +428,7 @@ class ReferenceService {
     }
 
     const response = await authService.authenticatedFetch(
-      API_REFERENCE_ENDPOINTS.ANALOG_CREATE_IDENTITY(patentId),
+      API_PROCESSOR_ENDPOINTS.ANALOG_CREATE_IDENTITY(patentId),
       {
         method: 'POST',
         headers: {
@@ -451,7 +451,7 @@ class ReferenceService {
     }
 
     const response2 = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.PATENT_GET_IDENTITY(patentId),
+        API_PROCESSOR_ENDPOINTS.PATENT_GET_IDENTITY(patentId),
         {
           method: 'GET',
           headers: {
@@ -566,7 +566,7 @@ class ReferenceService {
 
     try {
       const response = await authService.authenticatedFetch(
-        API_REFERENCE_ENDPOINTS.PATENT_GET_IDENTITY(patentId),
+        API_PROCESSOR_ENDPOINTS.PATENT_GET_IDENTITY(patentId),
         {
           method: 'GET',
           headers: {
@@ -617,7 +617,7 @@ class ReferenceService {
     }
 
     const response = await authService.authenticatedFetch(
-      API_REFERENCE_ENDPOINTS.PROTOTYPE_SET,
+      API_PROCESSOR_ENDPOINTS.PROTOTYPE_SET,
       {
         method: 'POST',
         headers: {
@@ -650,7 +650,7 @@ class ReferenceService {
     }
 
     const response = await authService.authenticatedFetch(
-      API_REFERENCE_ENDPOINTS.PROTOTYPE_GET(patentId),
+      API_PROCESSOR_ENDPOINTS.PROTOTYPE_GET(patentId),
       {
         method: 'GET',
         headers: { Accept: 'application/json' },

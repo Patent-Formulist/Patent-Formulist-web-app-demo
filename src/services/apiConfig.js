@@ -20,7 +20,9 @@ export const API_PATENT_ENDPOINTS = {
   PATENT_DELETE: (uuid) => `${URL}/patents/${uuid}/`
 }
 
-export const API_REFERENCE_ENDPOINTS = {
+export const API_PROCESSOR_ENDPOINTS = {
+  /*
+  В данный момент не нужны, могут понадобиться при разделении действий
   ANALOG_CREATE_LINK: (uuid) => `${URL}/patents/${uuid}/analogs/link/`,
   ANALOG_CREATE_METADATA: (uuid) => `${URL}/patents/${uuid}/analogs/metadata/`,
   ANALOG_GET_RESULT: (taskId) => `${URL}/analog/link/${taskId}/`,
@@ -30,24 +32,22 @@ export const API_REFERENCE_ENDPOINTS = {
   PATENT_CREATE_GENERAL_ATTRIBUTE: (uuid) => `${URL}/patents/${uuid}/attributes/general/`,
   ANALOG_CREATE_ATTRIBUTE_CHECKING: (uuid) => `${URL}/patents/${uuid}/analogs/attributes/checking/`,
   PATENT_CREATE_ATTRIBUTE_CHECKING: (uuid) => `${URL}/patents/${uuid}/attributes/checking/`,
-  PATENT_CREATE_STATISTICS: (uuid) => `${URL}/patents/${uuid}/analogs/statistics/`,
-  ANALOG_CREATE_IDENTITY: (uuid) => `${URL}/patents/${uuid}/analogs/identity/`,
+  */
 
-  ANALOG_GET_SEARCH_RESULT: (uuid) => `${URL}/patents/${uuid}/analogs/search/`,
-  PATENT_GET_STATISTICS: (uuid) => `${URL}/patents/${uuid}/statistics/`,
-  PATENT_GET_IDENTITY: (uuid) => `${URL}/patents/${uuid}/identity/`,
+  CREATE_SEARCH: `${URL}/processor/search/`,
+  CREATE_STATISTICS: `${URL}/processor/statistics/`,
+  CREATE_IDENTITY: `${URL}/processor/identity/`,
 
-
-  ANALOG_GET_COMPARE_RESULT: (taskId) => `${URL}/analog/compare/${taskId}/`,
-  PROTOTYPE_SET: `${URL}/prototype/`,
-  PROTOTYPE_GET: (patentId) => `${URL}/prototype/${patentId}/`
+  GET_SEARCH_RESULT: `${URL}/processor/search/`,
+  GET_STATISTICS: `${URL}/processor/statistics/`,
+  GET_IDENTITY: `${URL}/processor/identity/`,
 }
 
 export const API_PROFILE_ENDPOINTS = {
-  PROFILE_GET: `${URL}/profile`,
-  PROFILE_UPDATE: `${URL}/profile`,
-  PROFILE_AVATAR_UPLOAD: `${URL}/profile/avatar`,
-  SETTINGS_GET: `${URL}/settings`,
-  SETTINGS_UPDATE: `${URL}/settings`,
-  AI_MODELS_GET: `${URL}/ai-models`
+  PROFILE_GET: `${URL}/users/profile`,
+  PROFILE_UPDATE: `${URL}/users/profile`,
+  PROFILE_AVATAR_UPLOAD: `${URL}/users/profile/avatar`,
+  SETTINGS_GET: `${URL}/users/settings`,
+  SETTINGS_UPDATE: `${URL}/users/settings`,
+  AI_MODELS_GET: `${URL}/users/ai-models`
 }

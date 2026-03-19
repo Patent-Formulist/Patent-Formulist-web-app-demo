@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useReference } from '../../../contexts/ReferenceContext'
 import { useToast } from '../../../contexts/ToastContext'
 import { TASK_STATUS } from '../../../services/reference/referenceService'
-import { API_REFERENCE_ENDPOINTS } from '../../../services/apiConfig'
+import { API_PROCESSOR_ENDPOINTS } from '../../../services/apiConfig'
 import * as XLSX from 'xlsx'
 import styles from '../styles/Prototype.module.css'
 import authService from "../../../services/auth/authService.js";
@@ -151,7 +151,7 @@ export default function Prototype() {
       try {
         console.log('🌐 Запрашиваем данные прототипа с сервера')
         const response = await authService.authenticatedFetch(
-          API_REFERENCE_ENDPOINTS.PATENT_GET_IDENTITY(id),
+          API_PROCESSOR_ENDPOINTS.PATENT_GET_IDENTITY(id),
           {
             method: 'GET',
             headers: {
