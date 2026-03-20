@@ -67,3 +67,4 @@ build/
 # Testing
 coverage/
 .nyc_output/
+src/services/appConfig.js
