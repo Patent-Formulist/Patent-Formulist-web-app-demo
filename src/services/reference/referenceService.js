@@ -440,7 +440,7 @@ class ReferenceService {
     }
 
     const response = await authService.authenticatedFetch(
-      API_PROCESSOR_ENDPOINTS.ANALOG_CREATE_IDENTITY(patentId),
+      API_PROCESSOR_ENDPOINTS.CREATE_IDENTITY,
       {
         method: 'POST',
         headers: {
