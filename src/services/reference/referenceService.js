@@ -248,7 +248,7 @@ class ReferenceService {
       }
 
       const response1 = await authService.authenticatedFetch(
-        API_PROCESSOR_ENDPOINTS.PATENT_CREATE_STATISTICS(patentId),
+        API_PROCESSOR_ENDPOINTS.CREATE_STATISTICS,
         {
           method: 'POST',
           headers: {
