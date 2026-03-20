@@ -87,8 +87,20 @@ class ReferenceService {
       return { task_id: taskId }
     }
 
-    const response3 = await authService.authenticatedFetch(
-      API_PROCESSOR_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(patentId),
+    const response = await authService.authenticatedFetch(
+        API_PROCESSOR_ENDPOINTS.CREATE_SEARCH,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ patent_id: patentId }),
+        }
+      )
+
+    const response1 = await authService.authenticatedFetch(
+      API_PROCESSOR_ENDPOINTS.GET_SEARCH_RESULT(patentId),
       {
         method: 'GET',
         headers: {
@@ -98,7 +110,7 @@ class ReferenceService {
       }
     )
 
-    const data = await response3.json()
+    const data = await response1.json()
     const analogsData = data.analogs || data
 
     // 👇 СОХРАНЯЕМ ДАННЫЕ В localStorage
@@ -199,7 +211,7 @@ class ReferenceService {
     console.log('🌐 Запрашиваем данные с сервера для taskId:', taskId)
 
     const response = await authService.authenticatedFetch(
-      API_PROCESSOR_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(patentId), // 👈 ЭТОТ ЗАПРОС ТЕПЕРЬ БУДЕТ ТОЛЬКО ПРИ ОТСУТСТВИИ ДАННЫХ
+      API_PROCESSOR_ENDPOINTS.GET_SEARCH_RESULT(patentId), // 👈 ЭТОТ ЗАПРОС ТЕПЕРЬ БУДЕТ ТОЛЬКО ПРИ ОТСУТСТВИИ ДАННЫХ
       {
         method: 'GET',
         headers: { Accept: 'application/json' },
@@ -268,7 +280,7 @@ class ReferenceService {
       }
 
       const response8 = await authService.authenticatedFetch(
-        API_PROCESSOR_ENDPOINTS.PATENT_GET_STATISTICS(patentId),
+        API_PROCESSOR_ENDPOINTS.GET_STATISTICS(patentId),
         {
           method: 'GET',
           headers: {
@@ -386,7 +398,7 @@ class ReferenceService {
     console.log('🌐 Запрашиваем данные статистики с сервера для patentId:', patentId)
 
     const response = await authService.authenticatedFetch(
-      API_PROCESSOR_ENDPOINTS.PATENT_GET_STATISTICS(patentId),
+      API_PROCESSOR_ENDPOINTS.GET_STATISTICS(patentId),
       {
         method: 'GET',
         headers: {
@@ -451,7 +463,7 @@ class ReferenceService {
     }
 
     const response2 = await authService.authenticatedFetch(
-        API_PROCESSOR_ENDPOINTS.PATENT_GET_IDENTITY(patentId),
+        API_PROCESSOR_ENDPOINTS.GET_IDENTITY(patentId),
         {
           method: 'GET',
           headers: {
@@ -566,7 +578,7 @@ class ReferenceService {
 
     try {
       const response = await authService.authenticatedFetch(
-        API_PROCESSOR_ENDPOINTS.PATENT_GET_IDENTITY(patentId),
+        API_PROCESSOR_ENDPOINTS.GET_IDENTITY(patentId),
         {
           method: 'GET',
           headers: {

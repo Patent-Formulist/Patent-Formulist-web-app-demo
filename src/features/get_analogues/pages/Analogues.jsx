@@ -83,7 +83,7 @@ const { startTask, getTask, updateTask } = useReference()
 
       try {
         const response = await authService.authenticatedFetch(
-          API_PROCESSOR_ENDPOINTS.ANALOG_GET_SEARCH_RESULT(id),
+          API_PROCESSOR_ENDPOINTS.GET_SEARCH_RESULT(id),
           {
             method: 'GET',
             headers: {

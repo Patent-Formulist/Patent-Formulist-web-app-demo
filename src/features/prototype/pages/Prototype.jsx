@@ -151,7 +151,7 @@ export default function Prototype() {
       try {
         console.log('🌐 Запрашиваем данные прототипа с сервера')
         const response = await authService.authenticatedFetch(
-          API_PROCESSOR_ENDPOINTS.PATENT_GET_IDENTITY(id),
+          API_PROCESSOR_ENDPOINTS.GET_IDENTITY(id),
           {
             method: 'GET',
             headers: {

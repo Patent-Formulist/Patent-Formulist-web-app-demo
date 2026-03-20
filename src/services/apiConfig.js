@@ -38,9 +38,9 @@ export const API_PROCESSOR_ENDPOINTS = {
   CREATE_STATISTICS: `${URL}/processor/statistics/`,
   CREATE_IDENTITY: `${URL}/processor/identity/`,
 
-  GET_SEARCH_RESULT: `${URL}/processor/search/`,
-  GET_STATISTICS: `${URL}/processor/statistics/`,
-  GET_IDENTITY: `${URL}/processor/identity/`,
+  GET_SEARCH_RESULT: (uuid) => `${URL}/processor/patent/${uuid}/search/`,
+  GET_STATISTICS: (uuid) => `${URL}/processor/patent/${uuid}/statistics/`,
+  GET_IDENTITY: (uuid) => `${URL}/processor/patent/${uuid}/identity/`,
 }
 
 export const API_PROFILE_ENDPOINTS = {

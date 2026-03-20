@@ -134,7 +134,7 @@ export default function AnaloguesPatentComparison() {
       try {
         console.log('🌐 Запрашиваем данные сопоставления с сервера')
         const response = await authService.authenticatedFetch(
-          API_PROCESSOR_ENDPOINTS.PATENT_GET_STATISTICS(id),
+          API_PROCESSOR_ENDPOINTS.GET_STATISTICS(id),
           {
             method: 'GET',
             headers: {
