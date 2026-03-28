@@ -1,9 +1,10 @@
 import { APP_CONFIG } from './appConfig'
 
+// ФАЙЛ В GITIGNORE, ПРИ ИЗМЕНЕНИИ УБРАТЬ
 const URL = APP_CONFIG.USE_OFFLINE_MODE 
   ? 'mock://localhost/api/v1'
-  : 'http://formulinked.ru/api/v1'
-
+  : 'http://localhost:8080/api/v1'
+// ИЗМЕНЕННЫЙ УЧАСТОК КОДА МЕЖДУ КОММЕНТАРИЕВ
 export const API_AUTH_ENDPOINTS = {
   LOGIN: `${URL}/users/login`,
   REGISTER: `${URL}/users/registration`,

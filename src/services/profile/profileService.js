@@ -10,6 +10,14 @@ const getCurrentMockUser = () => {
 }
 
 class ProfileService {
+  async parseJson(response) {
+    try {
+      return await response.json()
+    } catch {
+      throw new Error('Ошибка сервера')
+    }
+  }
+
   async getProfile() {
     if (APP_CONFIG.USE_OFFLINE_MODE) {
       await mockDelay(null)
@@ -35,7 +43,7 @@ class ProfileService {
       throw new Error('Ошибка загрузки профиля');
     }
 
-    const data = await response.json()
+    const data = await this.parseJson(response)
     return data
   }
 
@@ -139,7 +147,7 @@ class ProfileService {
       throw new Error('Ошибка загрузки профиля');
     }
 
-    const data = await response.json()
+    const data = this.parseJson(response)
     return data
   }
 
