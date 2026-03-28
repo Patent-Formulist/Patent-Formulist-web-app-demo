@@ -7,7 +7,6 @@ import funcsIcon from '../../../resources/funcs.svg';
 
 import styles from '../styles/WelcomeHeader.module.css';
 
-
 function WelcomeHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -27,6 +26,22 @@ function WelcomeHeader() {
   const toggleMenu = () => setMenuOpen(!menuOpen);
   const closeMenu = () => setMenuOpen(false);
 
+  const handleAnchorClick = (e, sectionId) => {
+    e.preventDefault();
+    
+    if (sectionId === 'about') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      closeMenu();
+      return;
+    }
+    
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      closeMenu();
+    }
+  };
+
   return (
     <header className={styles.header}>
       <div className={styles.container}>
@@ -35,9 +50,9 @@ function WelcomeHeader() {
         </Link>
 
         <nav className={`${styles.navLinks} ${menuOpen ? styles.open : ''}`}>
-          <Link to="/about" onClick={closeMenu}>О нас</Link>
-          <Link to="/faq" onClick={closeMenu}>Частые вопросы</Link>
-          <Link to="/contacts" onClick={closeMenu}>Контакты</Link>
+          <a href="#about" onClick={(e) => handleAnchorClick(e, 'about')}>О нас</a>
+          <a href="#faq" onClick={(e) => handleAnchorClick(e, 'faq')}>Частые вопросы</a>
+          <a href="#contacts" onClick={(e) => handleAnchorClick(e, 'contacts')}>Контакты</a>
           
           <div className={styles.mobileAuthButtons}>
             {isAuthenticated ? (
@@ -85,6 +100,5 @@ function WelcomeHeader() {
     </header>
   );
 }
-
 
 export default WelcomeHeader;

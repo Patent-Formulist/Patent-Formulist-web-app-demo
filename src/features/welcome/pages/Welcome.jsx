@@ -9,9 +9,9 @@ function Welcome() {
   return (
     <div className={styles.page}>
       <HeroComp />
-      <AboutComp />
-      <ContactsComp />
-      <FAQComp />
+      <div id="about"><AboutComp /></div>
+      <div id="faq"><FAQComp /></div>
+      <div id="contacts"><ContactsComp /></div>
     </div>
   );
 }
