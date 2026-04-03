@@ -229,7 +229,12 @@ class ReferenceService {
       localStorage.setItem(`analogs_data_${patentId}`, JSON.stringify(data.analogs))
     }
 
-    return data
+    return {
+      status: TASK_STATUS.SUCCESS,
+      message: 'Готово',
+      task_id: taskId,
+      data: normalizedData // нормализация
+    }
   }
 
     async createAnalogCompare(patentId) {
@@ -421,7 +426,12 @@ class ReferenceService {
       console.log('💾 Данные статистики сохранены в localStorage с ключом:', `analogs_statistics_${patentId}`)
     }
 
-    return data
+    return {
+      status: TASK_STATUS.SUCCESS,
+      message: 'Готово',
+      task_id: taskId,
+      data: data  // или data[patentId] если есть обёртка
+    }
 }
 
   async createPrototypeTask(patentId) {
@@ -679,6 +689,42 @@ class ReferenceService {
     const data = await response.json()
     return data
   }
+
+  async getPatentProgress(patentUuid) {
+    try {
+      const response = await authService.authenticatedFetch(
+        API_PROCESSOR_ENDPOINTS.GET_PROGRESS(patentUuid),
+        { 
+          method: 'GET', 
+          headers: { Accept: 'application/json' } 
+        }
+      )
+      
+      if (!response.ok) {
+        throw new Error('Ошибка получения прогресса')
+      }
+      
+      const data = await response.json()
+      console.log('📊 Прогресс патента:', data)
+      
+      return {
+        success: true,
+        data: {
+          lastUiButton: data.last_ui_button,  // "ANALOGS_SEARCH" | "STATISTICS" | "IDENTITY"
+          statisticsState: data.statistics_pipeline_state,
+          identityState: data.identity_pipeline_state,
+          error: data.pipeline_error,
+        }
+      }
+    } catch (error) {
+      console.error('❌ Ошибка getPatentProgress:', error)
+      return { 
+        success: false, 
+        error: error.message 
+      }
+    }
+  }
 }
+
 
 export default new ReferenceService()

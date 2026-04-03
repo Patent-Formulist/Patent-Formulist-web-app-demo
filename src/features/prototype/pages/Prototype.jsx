@@ -546,7 +546,7 @@ return (
       {isLoading && <SkeletonTable />}
 
       {/* ТАБЛИЦА СРАВНЕНИЯ */}
-      {prototypeData && !isLoading && renderFeaturesComparisonTable()}
+      {isCompleted && !isLoading && renderFeaturesComparisonTable()}
     </div>
 
     {/* Модальное окно — оставьте как есть */}

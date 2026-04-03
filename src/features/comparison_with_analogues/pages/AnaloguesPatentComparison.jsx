@@ -350,7 +350,7 @@ export default function AnaloguesPatentComparison() {
 
         {isLoading && <SkeletonTable />}
 
-        {comparisonData && !isLoading && renderComparisonTable()}
+        {isCompleted && !isLoading && renderComparisonTable()}
       </div>
 
       {confirmModalVisible && createPortal(
