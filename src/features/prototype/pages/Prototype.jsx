@@ -10,6 +10,33 @@ import styles from '../styles/Prototype.module.css'
 import authService from "../../../services/auth/authService.js";
 import { SkeletonTable } from '../../../components/Skeleton/SkeletonTable'
 
+// 🔹 НАСТРОЙКИ ОТЛАДКИ
+const DEBUG = true; // ← Переключатель: true = логи включены, false = выключены
+const MODULE = 'Prototype'; // ← Метка модуля для логов
+
+// 🔹 Хелперы для логов
+const log = (label, data) => {
+  if (!DEBUG) return;
+  const time = new Date().toLocaleTimeString();
+  console.log(`[${time}] [${MODULE}] ${label}`, data !== undefined ? data : '');
+};
+
+const logGroup = (label, callback) => {
+  if (!DEBUG) return callback();
+  const time = new Date().toLocaleTimeString();
+  console.group(`[${time}] [${MODULE}] ${label}`);
+  const result = callback();
+  console.groupEnd();
+  return result;
+};
+
+const logTable = (label, data) => {
+  if (!DEBUG || !data) return;
+  console.log(`[${new Date().toLocaleTimeString()}] [${MODULE}] ${label}`);
+  console.table(data);
+};
+
+
 const downloadFeaturesExcel = (prototypeFeatures, patentFeatures, fileName) => {
   const headers = ['', 'Признаки патента', 'Признаки прототипа']
   const rows = []
@@ -102,7 +129,7 @@ export default function Prototype() {
   const compareTask = getCompareTask(id)
   const prototypeTask = getPrototypeTask(id)
 
-    console.log('🔍 [Prototype] id =', id);
+  console.log('🔍 [Prototype] id =', id);
   console.log('🔍 [Prototype] prototypeTask =', prototypeTask);
   console.log('🔍 [Prototype] prototypeTask?.data =', prototypeTask?.data);
   console.log('🔍 [Prototype] localStorage raw =', localStorage.getItem(`analogs_identity_${id}`));
@@ -119,6 +146,22 @@ export default function Prototype() {
   const isCompleted = prototypeTask?.status === TASK_STATUS.SUCCESS && prototypeData
   const isLoading = isSubmitting || prototypeTask?.status === TASK_STATUS.RUNNING
 
+  // 🔹 Лог рендера (с группировкой)
+  useEffect(() => {
+    if (!DEBUG) return;
+    console.groupCollapsed(`🔍 РЕНДЕР [${new Date().toLocaleTimeString()}]`)
+    console.table({
+      id,
+      isLoading,
+      isCompleted: !!isCompleted,
+      taskStatus: prototypeTask?.status,
+      hasData: !!prototypeData,
+      isSubmitting,
+      isCompareCompleted,
+      dataKeys: prototypeData ? Object.keys(prototypeData).slice(0, 3) : null
+    })
+    console.groupEnd()
+  }, [isLoading, isCompleted, prototypeTask?.status, prototypeData, isSubmitting, isCompareCompleted, id])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -190,6 +233,11 @@ export default function Prototype() {
 
   useEffect(() => {
     if (prototypeTask?.status !== prevStatus) {
+      logGroup('🔵 Статус изменился', () => {
+        log('Старый статус', prevStatus)
+        log('Новый статус', prototypeTask?.status)
+        log('Время', new Date().toISOString())
+      })
       if (prototypeTask?.status === TASK_STATUS.SUCCESS) {
         showSuccess('Характеристики прототипа успешно получены')
       } else if (prototypeTask?.status === TASK_STATUS.FAILED) {
@@ -200,35 +248,54 @@ export default function Prototype() {
   }, [prototypeTask?.status, prototypeTask?.error, prevStatus, showSuccess, showError])
 
   useEffect(() => {
-    if (prototypeTask?.status === TASK_STATUS.SUCCESS ||
-        prototypeTask?.status === TASK_STATUS.FAILED) {
+    if (prototypeTask?.status === TASK_STATUS.SUCCESS || prototypeTask?.status === TASK_STATUS.FAILED) {
+      log('🔵 Сбрасываем isSubmitting', { status: prototypeTask?.status })
       setIsSubmitting(false)
     }
   }, [prototypeTask?.status])
 
   const handleGetPrototype = async () => {
+    const clickTime = Date.now()
+    
+    logGroup('🔴 КЛИК: Получить прототип', () => {
+      log('Время клика', new Date(clickTime).toISOString())
+      log('Состояние', { isCompareCompleted, isCompleted, isLoading })
+    })
+    
     if (!isCompareCompleted) {
+      log('⚠️ БЛОКИРОВКА: сопоставление не завершено')
       showWarning('Сначала выполните сопоставление патента с аналогами')
       return
     }
 
-    if (isCompleted) {
+    if (isCompleted) { 
+      log('⚠️ Уже завершено - показываем модалку')
       setConfirmModalVisible(true)
-      return
+      return 
     }
 
+    log('⬇️ Устанавливаем isSubmitting = true')
     setIsSubmitting(true)
-
-
+    
     try {
+      log('🚀 Вызываем startPrototypeTask...')
+      const startTime = Date.now()
       await startPrototypeTask(id)
+      const endTime = Date.now()
+      
+      logGroup('✅ startPrototypeTask завершён', () => {
+        log('Время выполнения', `${endTime - startTime} мс`)
+        log('Новое состояние задачи', getPrototypeTask(id)?.status)
+      })
     } catch (err) {
+      log('❌ ОШИБКА startPrototypeTask', { message: err.message })
       showError(err.message || 'Ошибка запуска задачи получения прототипа')
-        setIsSubmitting(false)
+      setIsSubmitting(false)
     }
   }
 
   const confirmRestart = async () => {
+    log('🔴 confirmRestart: перезапуск задачи')
     setConfirmModalVisible(false)
     try {
       await startPrototypeTask(id)
@@ -238,34 +305,30 @@ export default function Prototype() {
   }
 
   const cancelRestart = () => {
+    log('🔴 cancelRestart: отмена')
     setConfirmModalVisible(false)
   }
 
   const handleDownloadPrototype = () => {
-  // 🔹 Новый формат: проверяем rows
+    log('🔴 handleDownloadPrototype: попытка скачивания')
     if (!isCompleted || !prototypeData?.rows || prototypeData.rows.length === 0) {
       showWarning('Сначала получите характеристики прототипа')
       return
     }
-
     try {
-      // 🔹 Преобразуем rows в массивы для downloadFeaturesExcel
       const prototypeFeatures = prototypeData.rows.map(r => r.feature || '')
       const patentFeatures = prototypeData.rows.map(r => r.patent_feature || '')
-
-      downloadFeaturesExcel(
-        prototypeFeatures,
-        patentFeatures,
-        `prototype_comparison_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
-      )
+      log('📦 Скачиваем таблицу сравнения', { featuresCount: prototypeFeatures.length })
+      downloadFeaturesExcel(prototypeFeatures, patentFeatures, `prototype_comparison_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`)
       showSuccess('Таблица сравнения признаков успешно скачана')
     } catch (err) {
+      log('❌ Ошибка скачивания', { message: err.message })
       showError('Ошибка при скачивании таблицы сравнения')
     }
   }
 
   const handleGetFeatures = () => {
-  // 🔹 Новый формат: проверяем rows
+    log('🔴 handleGetFeatures: переход в меню признаков')
     if (!prototypeData?.rows || prototypeData.rows.length === 0) {
       showWarning('Сначала получите характеристики прототипа')
       return
@@ -274,175 +337,166 @@ export default function Prototype() {
   }
 
   const handleBackToMain = () => {
+    log('🔴 handleBackToMain: возврат на главную')
     setViewMode('main')
   }
 
   const handleBackToFeaturesMenu = () => {
+    log('🔴 handleBackToFeaturesMenu: возврат в меню признаков')
     setViewMode('features-menu')
   }
 
   const handleShowAllFeatures = () => {
+    log('🔴 handleShowAllFeatures: показать все признаки')
     setViewMode('features-all')
   }
 
   const handleShowPrototypeFeatures = () => {
+    log('🔴 handleShowPrototypeFeatures: показать признаки прототипа')
     setViewMode('features-prototype')
   }
 
   const handleShowPatentFeatures = () => {
+    log('🔴 handleShowPatentFeatures: показать признаки патента')
     setViewMode('features-patent')
   }
 
   const handleDownloadAllFeatures = () => {
+    log('🔴 handleDownloadAllFeatures: скачивание всех признаков')
     if (!prototypeData?.rows || prototypeData.rows.length === 0) {
       showWarning('Данные признаков недоступны')
       return
     }
-
     try {
-      // 🔹 Преобразуем rows в массивы
       const prototypeFeatures = prototypeData.rows.map(r => r.feature || '')
       const patentFeatures = prototypeData.rows.map(r => r.patent_feature || '')
-
-      downloadFeaturesExcel(
-        prototypeFeatures,
-        patentFeatures,
-        `features_all_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
-      )
+      downloadFeaturesExcel(prototypeFeatures, patentFeatures, `features_all_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`)
       showSuccess('Признаки патента и прототипа успешно скачаны')
     } catch (err) {
+      log('❌ Ошибка скачивания', { message: err.message })
       showError('Ошибка при скачивании признаков')
     }
   }
 
   const handleDownloadPrototypeFeatures = () => {
-  // 🔹 Новый формат: проверяем rows
+    log('🔴 handleDownloadPrototypeFeatures: скачивание признаков прототипа')
     if (!prototypeData?.rows || prototypeData.rows.length === 0) {
       showWarning('Данные признаков прототипа недоступны')
       return
     }
-
     try {
-      // 🔹 Извлекаем только признаки прототипа из rows
-      const prototypeFeatures = prototypeData.rows
-        .map(r => r.feature || '')
-        .filter(f => f !== '')  // Убираем пустые
-
-      downloadPrototypeOnlyExcel(
-        prototypeFeatures,
-        `features_prototype_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
-      )
+      const prototypeFeatures = prototypeData.rows.map(r => r.feature || '').filter(f => f !== '')
+      downloadPrototypeOnlyExcel(prototypeFeatures, `features_prototype_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`)
       showSuccess('Признаки прототипа успешно скачаны')
     } catch (err) {
+      log('❌ Ошибка скачивания', { message: err.message })
       showError('Ошибка при скачивании признаков прототипа')
     }
   }
 
   const handleDownloadPatentFeatures = () => {
+    log('🔴 handleDownloadPatentFeatures: скачивание признаков патента')
     if (!prototypeData?.rows || prototypeData.rows.length === 0) {
       showWarning('Данные признаков патента недоступны')
       return
     }
-
     try {
-      // 🔹 Извлекаем только признаки патента из rows (убираем null/пустые)
-      const patentFeatures = prototypeData.rows
-        .map(r => r.patent_feature || '')
-        .filter(f => f !== '')  // Убираем пустые
-
-      downloadPatentOnlyExcel(
-        patentFeatures,
-        `features_patent_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`
-      )
+      const patentFeatures = prototypeData.rows.map(r => r.patent_feature || '').filter(f => f !== '')
+      downloadPatentOnlyExcel(patentFeatures, `features_patent_${id}_${new Date().toISOString().slice(0, 10)}.xlsx`)
       showSuccess('Признаки патента успешно скачаны')
     } catch (err) {
+      log('❌ Ошибка скачивания', { message: err.message })
       showError('Ошибка при скачивании признаков патента')
     }
   }
 
   const renderFeaturesComparisonTable = () => {
-  // 🔹 Новый формат: проверяем rows вместо отдельных массивов
-    if (!prototypeData?.rows || prototypeData.rows.length === 0) {
-      return null
-    }
+    return logGroup('🟡 Рендер таблицы сравнения', () => {
+      if (!prototypeData?.rows || prototypeData.rows.length === 0) {
+        log('⚠️ Нет данных для таблицы (rows пустой)')
+        return null
+      }
 
-    const { rows } = prototypeData
+      const { rows } = prototypeData
+      const limitingRows = rows.filter(r => r.section === 'limiting')
+      const distinguishingRows = rows.filter(r => r.section === 'distinguishing')
+      
+      log('✅ Рендерим таблицу', { 
+        totalRows: rows.length, 
+        limiting: limitingRows.length, 
+        distinguishing: distinguishingRows.length 
+      })
 
-    // 🔹 Разделяем на секции
-    const limitingRows = rows.filter(r => r.section === 'limiting')
-    const distinguishingRows = rows.filter(r => r.section === 'distinguishing')
-
-    return (
-      <div className={styles.tableWrapper}>
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.featureHeader}>Признак</th>
-                <th className={styles.featureHeader}>Признак патента</th>
-                <th className={styles.featureHeader}>Признак прототипа</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Ограничительные признаки */}
-              {limitingRows.length > 0 && (
-                <>
-                  <tr className={styles.sectionRow}>
-                    <td colSpan="3" className={styles.sectionTitle}>
-                      Ограничительные признаки
-                    </td>
-                  </tr>
-                  {limitingRows.map((row) => (
-                    <tr key={`limiting-${row.row_number}`}>
-                      <td className={styles.featureCell}>
-                        <span className={styles.featureNumber}>{row.row_number}.</span>
-                        {row.feature}
-                      </td>
-                      <td className={styles.featureCell}>
-                        {row.patent_feature || '—'}
-                      </td>
-                      <td className={styles.featureCell}>
-                        {row.prototype_feature || '—'}
+      return (
+        <div className={styles.tableWrapper}>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.featureHeader}>Признак</th>
+                  <th className={styles.featureHeader}>Признак патента</th>
+                  <th className={styles.featureHeader}>Признак прототипа</th>
+                </tr>
+              </thead>
+              <tbody>
+                {limitingRows.length > 0 && (
+                  <>
+                    <tr className={styles.sectionRow}>
+                      <td colSpan="3" className={styles.sectionTitle}>
+                        Ограничительные признаки
                       </td>
                     </tr>
-                  ))}
-                </>
-              )}
+                    {limitingRows.map((row) => (
+                      <tr key={`limiting-${row.row_number}`}>
+                        <td className={styles.featureCell}>
+                          <span className={styles.featureNumber}>{row.row_number}.</span>
+                          {row.feature}
+                        </td>
+                        <td className={styles.featureCell}>
+                          {row.patent_feature || '—'}
+                        </td>
+                        <td className={styles.featureCell}>
+                          {row.prototype_feature || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                )}
 
-              {/* Отличительные признаки */}
-              {distinguishingRows.length > 0 && (
-                <>
-                  <tr className={styles.sectionRow}>
-                    <td colSpan="3" className={styles.sectionTitle}>
-                      Отличительные признаки
-                    </td>
-                  </tr>
-                  {distinguishingRows.map((row) => (
-                    <tr key={`distinguishing-${row.row_number}`}>
-                      <td className={styles.featureCell}>
-                        <span className={styles.featureNumber}>{row.row_number}.</span>
-                        {row.feature}
-                      </td>
-                      <td className={styles.featureCell}>
-                        {row.patent_feature || '—'}
-                      </td>
-                      <td className={styles.featureCell}>
-                        {row.prototype_feature || '—'}
+                {distinguishingRows.length > 0 && (
+                  <>
+                    <tr className={styles.sectionRow}>
+                      <td colSpan="3" className={styles.sectionTitle}>
+                        Отличительные признаки
                       </td>
                     </tr>
-                  ))}
-                </>
-              )}
-            </tbody>
-          </table>
+                    {distinguishingRows.map((row) => (
+                      <tr key={`distinguishing-${row.row_number}`}>
+                        <td className={styles.featureCell}>
+                          <span className={styles.featureNumber}>{row.row_number}.</span>
+                          {row.feature}
+                        </td>
+                        <td className={styles.featureCell}>
+                          {row.patent_feature || '—'}
+                        </td>
+                        <td className={styles.featureCell}>
+                          {row.prototype_feature || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-    )
+      )
+    })
   }
 
   const renderFeaturesAll = () => {
     if (!prototypeData?.prototype_features || !prototypeData?.patent_features) return null
-
+    log('🟡 Рендер: все признаки', { count: prototypeData.prototype_features?.length })
     return (
       <div className={styles.tableWrapper}>
         <div className={styles.tableContainer}>
@@ -471,7 +525,7 @@ export default function Prototype() {
 
   const renderFeaturesPrototype = () => {
     if (!prototypeData?.prototype_features) return null
-
+    log('🟡 Рендер: признаки прототипа', { count: prototypeData.prototype_features.length })
     return (
       <div className={styles.tableWrapper}>
         <div className={styles.tableContainer}>
@@ -498,7 +552,7 @@ export default function Prototype() {
 
   const renderFeaturesPatent = () => {
     if (!prototypeData?.patent_features) return null
-
+    log('🟡 Рендер: признаки патента', { count: prototypeData.patent_features.length })
     return (
       <div className={styles.tableWrapper}>
         <div className={styles.tableContainer}>
@@ -523,64 +577,67 @@ export default function Prototype() {
     )
   }
 
-return (
-  <>
-    <div className={styles.container}>
-      {/* Кнопки — только основные */}
-      <div className={styles.buttonContainer}>
-        <button
-          className={`${styles.actionButton} ${isLoading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
-          onClick={handleGetPrototype}
-          disabled={isLoading}
-        >
-          Получить характеристики прототипа
-        </button>
-        <button
-          className={`${styles.actionButton} ${!isCompleted ? styles.inactive : ''}`}
-          onClick={handleDownloadPrototype}
-        >
-          Скачать таблицу сравнения признаков
-        </button>
+  return (
+    <>
+      <div className={styles.container}>
+        <div className={styles.buttonContainer}>
+          <button
+            className={`${styles.actionButton} ${isLoading ? styles.loading : ''} ${isCompleted ? styles.completed : ''}`}
+            onClick={handleGetPrototype}
+            disabled={isLoading}
+          >
+            Получить характеристики прототипа
+          </button>
+          <button
+            className={`${styles.actionButton} ${!isCompleted ? styles.inactive : ''}`}
+            onClick={handleDownloadPrototype}
+          >
+            Скачать таблицу сравнения признаков
+          </button>
+        </div>
+
+        {isLoading && logGroup('🟢 ПОКАЗЫВАЕМ СКЕЛЕТОН', () => {
+          log('Причина', 'isLoading = true')
+          return <SkeletonTable />
+        })}
+
+        {isCompleted && !isLoading && logGroup('🟢 ПОКАЗЫВАЕМ ТАБЛИЦУ', () => {
+          log('Причина', 'isCompleted = true && !isLoading')
+          return renderFeaturesComparisonTable()
+        })}
       </div>
 
-      {isLoading && <SkeletonTable />}
-
-      {/* ТАБЛИЦА СРАВНЕНИЯ */}
-      {isCompleted && !isLoading && renderFeaturesComparisonTable()}
-    </div>
-
-    {/* Модальное окно — оставьте как есть */}
-    {confirmModalVisible && createPortal(
-      <div className={styles.modalOverlay} onClick={cancelRestart}>
-        <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-          <h3 className={styles.modalTitle}>Повторное получение прототипа?</h3>
-          <p className={styles.modalText}>
-            Вы уверены, что хотите выполнить повторное получение характеристик прототипа?
-          </p>
-          <p className={styles.modalWarning}>
-            Текущие данные будут заменены.
-          </p>
-          <div className={styles.modalButtons}>
-            <button
-              className={styles.modalCancelButton}
-              onClick={cancelRestart}
-              type="button"
-            >
-              Отмена
-            </button>
-            <button
-              className={styles.modalConfirmButton}
-              onClick={confirmRestart}
-              type="button"
-            >
-              Продолжить
-            </button>
+      {confirmModalVisible && createPortal(
+        <div className={styles.modalOverlay} onClick={cancelRestart}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>Повторное получение прототипа?</h3>
+            <p className={styles.modalText}>
+              Вы уверены, что хотите выполнить повторное получение характеристик прототипа?
+            </p>
+            <p className={styles.modalWarning}>
+              Текущие данные будут заменены.
+            </p>
+            <div className={styles.modalButtons}>
+              <button
+                className={styles.modalCancelButton}
+                onClick={cancelRestart}
+                type="button"
+              >
+                Отмена
+              </button>
+              <button
+                className={styles.modalConfirmButton}
+                onClick={confirmRestart}
+                type="button"
+              >
+                Продолжить
+              </button>
+            </div>
           </div>
-        </div>
-      </div>,
-      document.body
-    )}
-  </>
+        </div>,
+        document.body
+      )}
+    </>
   )
 }
 

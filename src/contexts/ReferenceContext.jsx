@@ -60,11 +60,25 @@ export function ReferenceProvider({ children }) {
   }, [])
 
   const restoreAnalogPolling = useCallback((patentId, taskId) => {
+    console.log('🟣 [Context] restoreAnalogPolling: ЗАПУЩЕН ПОЛЛИНГ', { patentId, taskId })
+    
     analogIntervalsRef.current[patentId] = setInterval(async () => {
+      const pollStart = Date.now()
+      console.log('🟣 [Context] polling: интервал сработал', new Date().toISOString())
+      
       try {
+        console.log('🟣 [Context] polling: вызываем getTaskResult...')
         const result = await referenceService.getTaskResult(taskId, patentId)
+        const pollEnd = Date.now()
+        
+        console.log('🟣 [Context] polling: getTaskResult вернул:', { 
+          status: result?.status, 
+          hasData: !!result?.data,
+          time: (pollEnd - pollStart) + 'мс'
+        })
 
         if (result.status === TASK_STATUS.SUCCESS) {
+          console.log('🟣 [Context] polling: SUCCESS - останавливаем поллинг')
           clearInterval(analogIntervalsRef.current[patentId])
           delete analogIntervalsRef.current[patentId]
 
@@ -77,7 +91,10 @@ export function ReferenceProvider({ children }) {
               error: null
             }
           }))
+          
+          console.log('🟣 [Context] polling: analogTasks обновлён на SUCCESS')
         } else if (result.status === TASK_STATUS.FAILED || result.status === TASK_STATUS.CANCELLED) {
+          console.log('🟣 [Context] polling: FAILED/CANCELLED - останавливаем поллинг')
           clearInterval(analogIntervalsRef.current[patentId])
           delete analogIntervalsRef.current[patentId]
 
@@ -90,8 +107,11 @@ export function ReferenceProvider({ children }) {
               error: result.message
             }
           }))
+        } else {
+          console.log('🟣 [Context] polling: статус', result.status, '- продолжаем поллинг')
         }
       } catch (error) {
+        console.error('🟣 [Context] polling: ОШИБКА:', error)
         clearInterval(analogIntervalsRef.current[patentId])
         delete analogIntervalsRef.current[patentId]
 
@@ -207,9 +227,21 @@ export function ReferenceProvider({ children }) {
   }, [])
 
   const startAnalogTask = useCallback(async (patentId) => {
+    console.log('🔵 [Context] startAnalogTask: ПЕРЕД вызовом', { 
+    patentId, 
+    currentStatus: analogTasks[patentId]?.status 
+    })
+    console.log('🔵 [Context] startAnalogTask: ЗАПУСК', { patentId, time: new Date().toISOString() })
+    
     try {
+      console.log('🔵 [Context] Вызываем referenceService.createAnalogLink...')
+      const createStart = Date.now()
       const createResponse = await referenceService.createAnalogLink(patentId)
+      const createEnd = Date.now()
+      console.log('🔵 [Context] createAnalogLink вернул:', createResponse, 'за', (createEnd - createStart), 'мс')
+      
       const taskId = createResponse.task_id
+      console.log('🔵 [Context] Устанавливаем статус RUNNING для taskId:', taskId)
 
       setAnalogTasks(prev => ({
         ...prev,
@@ -222,13 +254,16 @@ export function ReferenceProvider({ children }) {
       }))
 
       if (analogIntervalsRef.current[patentId]) {
+        console.log('🔵 [Context] Очищаем старый интервал поллинга')
         clearInterval(analogIntervalsRef.current[patentId])
       }
 
+      console.log('🔵 [Context] Запускаем restoreAnalogPolling')
       restoreAnalogPolling(patentId, taskId)
 
       return taskId
     } catch (error) {
+      console.error('🔵 [Context] ОШИБКА startAnalogTask:', error)
       setAnalogTasks(prev => ({
         ...prev,
         [patentId]: {
