@@ -22,19 +22,16 @@ const logGroup = (label, callback) => {
   console.groupEnd();
   return result;
 };
+import plusIcon from '../../../resources/plus.svg'
 
 const downloadExcel = (analogs, patentId) => {
-  if (!analogs || typeof analogs !== 'object') {
-    throw new Error('Неверный формат данных для скачивания')
-  }
-
   const headers = ['Номер', 'Название', 'Ссылка', 'Реферат', 'Формула']
   const rows = Object.values(analogs).map(analog => [
-    analog.number || analog.analog_num || '',
-    analog.title || '',
-    analog.link || analog.analog_link || '',
-    analog.abstract || '',
-    analog.claims || ''
+    analog.number,
+    analog.title,
+    analog.link,
+    analog.abstract,
+    analog.claims
   ])
 
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
@@ -55,12 +52,15 @@ const downloadExcel = (analogs, patentId) => {
 
 export default function Analogues() {
   const { id } = useParams()
-  const { startTask, getTask, updateTask } = useReference()
+    const { startTask, getTask, updateTask } = useReference()
   const { showWarning, showSuccess, showError } = useToast()
+  const [localDataLoaded, setLocalDataLoaded] = useState(false)
   const [localDataLoaded, setLocalDataLoaded] = useState(false)
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
   const [prevStatus, setPrevStatus] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [tableData, setTableData] = useState(null)
+  const [isAddRowClicked, setIsAddRowClicked] = useState(false)
   const task = getTask(id)
   const loading = task?.status === TASK_STATUS.RUNNING
   const error = task?.error
@@ -99,11 +99,10 @@ export default function Analogues() {
 
   /*useEffect(() => {
     const fetchData = async () => {
-      // Если данные уже загружены (локально или в контексте) — выходим
-      if (localDataLoaded || task?.data) return;
+      if (localDataLoaded) return;
 
       const savedData = localStorage.getItem(`analogs_${id}`)
-      if (savedData) {
+      if (savedData && !task?.data) {
         try {
           const data = JSON.parse(savedData)
           const analogsData = data.analogs || data
@@ -147,7 +146,6 @@ export default function Analogues() {
               data: analogsData,
               error: null
             });
-            setLocalDataLoaded(true);
             showSuccess('Аналоги успешно загружены с сервера');
           }
         }
@@ -178,7 +176,12 @@ export default function Analogues() {
     }
   }, [task?.status])
 
-  // 🔹 Обработчик клика с таймингами
+  useEffect(() => {
+    if (analogsData) {
+      setTableData(Object.values(analogsData))
+    }
+  }, [analogsData])
+
   const handleGetAnalogs = async () => {
     const clickTime = Date.now()
     
@@ -233,16 +236,63 @@ export default function Analogues() {
     }
 
     try {
-      // 🔹 РАСПАКОВКА: если данные в обёртке { "2": {...} }
-      const dataToDownload = analogsData[id] || analogsData
-      console.log('📦 Скачиваем аналоги:', dataToDownload)
-      
-      downloadExcel(dataToDownload, id)
+      downloadExcel(analogsData, id)
       showSuccess('Аналоги успешно скачаны')
     } catch (err) {
-      console.error('❌ Ошибка скачивания:', err)
       showError('Ошибка при скачивании аналогов')
     }
+  }
+
+  const handleAddRowButtonClick = () => {
+    setTableData(prev => [
+    ...prev,
+    {
+      number: '',
+      title: '',
+      link: '',
+      abstract: '',
+      claims: '',
+      isNew: true,
+      isLoading: false,
+      isDataLoaded: false,
+      isAddingNumber: true
+    }
+  ])
+    setIsAddRowClicked(true)
+  }
+
+  const updateRowAtIndex = (index, updates) => {
+    setTableData(prev => prev.map((row, i) => 
+      i === index ? { ...row, ...updates } : row
+    ))
+  }
+
+  const handleLoadRowData = async (index) => {
+    const currentRow = tableData[index]
+    
+    if (!currentRow?.number || currentRow.number.trim() === '') {
+      showWarning('Введите номер патента перед загрузкой данных')
+      return
+    }
+
+    updateRowAtIndex(index, { isAddingNumber: false, isLoading: true })
+
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    const mockData = {
+      title: 'Название патента',
+      link: 'https://example.com',
+      abstract: 'Краткое описание патента...',
+      claims: 'Формула изобретения...'
+    }
+
+    updateRowAtIndex(index, { ...mockData, isLoading: false, isDataLoaded: true })
+
+    setIsAddRowClicked(false)
+  }
+
+  const handleNumberChange = (index, value) => {
+    updateRowAtIndex(index, { number: value })
   }
 
   const renderAnalogsTable = () => {
@@ -266,27 +316,108 @@ export default function Analogues() {
               </tr>
             </thead>
             <tbody>
-              {Object.values(analogsData).map((analog, index) => (
-                <tr key={index}>
-                  <td>{analog.analog_num || analog.number}</td>
-                  <td>{analog.title}</td>
-                  <td>
-                    <a 
-                      href={analog.analog_link || analog.link}
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={styles.link}
-                    >
-                      Открыть
-                    </a>
-                  </td>
-                  <td>{analog.abstract}</td>
-                  <td>{analog.claims}</td>
-                </tr>
-              ))}
+              {tableData?.map((analog, index) => {
+                const isNewRow = analog.isNew
+                
+                if (isNewRow) {
+                  if (analog.isAddingNumber) {
+                    return (
+                      <tr key={index}>
+                        <td>
+                          <input
+                            type="text"
+                            value={analog.number}
+                            onChange={(e) => handleNumberChange(index, e.target.value)}
+                            className={styles.numberInput}
+                            placeholder="Введите номер"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleLoadRowData(index)
+                              }
+                            }}
+                          />
+                        </td>
+                        <td colSpan={4} className={styles.mergedCell}>
+                          <button
+                            type="button"
+                            className={styles.loadDataRowButton}
+                            onClick={() => handleLoadRowData(index)}
+                            disabled={!analog.number || analog.number.trim() === ''}
+                          >
+                            <span>Определить</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  }
+
+                  if (analog.isLoading) {
+                    return (
+                      <tr key={index} className={styles.newTableRow}>
+                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
+                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
+                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
+                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
+                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
+                      </tr>
+                    )
+                  }
+
+                  if (analog.isDataLoaded) {
+                    return (
+                      <tr key={index}>
+                        <td>{analog.number}</td>
+                        <td>{analog.title}</td>
+                        <td>
+                          <a 
+                            href={analog.analog_link || analog.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className={styles.link}
+                          >
+                            Открыть
+                          </a>
+                        </td>
+                        <td>{analog.abstract}</td>
+                        <td>{analog.claims}</td>
+                      </tr>
+                    )
+                  }
+                }
+
+                return (
+                  <tr key={index}>
+                    <td>{analog.analog_num || analog.number}</td>
+                    <td>{analog.title}</td>
+                    <td>
+                      <a
+                        href={analog.analog_link || analog.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.link}
+                      >
+                        Открыть
+                      </a>
+                    </td>
+                    <td>{analog.abstract}</td>
+                    <td>{analog.claims}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
+        {!isAddRowClicked && (
+          <button
+            type="button"
+            className={styles.tableAddRowButton}
+            onClick={handleAddRowButtonClick}
+            aria-label="Добавить новый патент в таблицу"
+          >
+            <img src={plusIcon} alt="" className={styles.addRowImg} aria-hidden="true" />
+          </button>
+        )}
       </div>
     )
   }
