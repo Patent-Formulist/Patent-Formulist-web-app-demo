@@ -30,7 +30,7 @@ npm run install
 npm start
 
 После запуска откроются:
-- **Frontend:** http://localhost:3000
+- **Frontend:** https://localhost:3000
 
 ## ⚙️ Конфигурация
 
@@ -40,7 +40,7 @@ npm start
 
 proxy: {
   '/api': {
-    target: 'http://formulinked.ru',     
+    target: 'https://formulinked.ru',     
     changeOrigin: true,
     secure: false,
     rewrite: path => path.replace(/^\/api/, '/api/v1'),
