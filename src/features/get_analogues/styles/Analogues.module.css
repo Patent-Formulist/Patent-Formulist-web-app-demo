@@ -32,9 +32,9 @@
 
 
 .actionButton {
-  background-color: rgba(49, 100, 146, 1);
-  color: white;
-  border: none;
+  background-color: rgba(255, 255, 255, 1);
+  color: rgba(49, 100, 146, 1);
+  border: 1px solid rgba(49, 100, 146, 1);
   border-radius: 10px;
   padding: 10px 14px;
   font-size: 12px;
@@ -50,6 +50,26 @@
   gap: 8px;
 }
 
+/* Активный режим у кнопок получить аналоги и режим редактирования */
+.tableButtonActive {
+  background-color: rgba(49, 100, 146, 1);
+  color: white;
+  border: none;
+}
+
+/* Стили для кнопки завершения редактирования */
+.finishEditButton {
+  margin-left: auto;
+}
+
+/* Стили для иконок: первый - изменение цвета, второй - затемнение когда кнопка отключена. Оба зависят от режима */
+.editIcon {
+  filter: brightness(0) invert(1);
+}
+
+.darkIcon {
+  filter: grayscale(100%);
+}
 
 .actionButton::after {
   content: '';
@@ -87,28 +107,11 @@
   }
 }
 
-
-.actionButton:hover {
-  background-color: rgba(39, 80, 116, 1);
-}
-
-
-.actionButton:disabled {
-  background-color: rgba(150, 150, 150, 1);
-  color: rgba(220, 220, 220, 1);
-  cursor: not-allowed;
-}
-
-
 .actionButton.inactive {
-  background-color: rgba(150, 150, 150, 1);
-  color: rgba(220, 220, 220, 1);
+  background-color: rgba(240, 240, 240, 1);
+  color: rgba(150, 150, 150, 1);
+  border: 1px solid rgba(180, 180, 180, 1);
   cursor: not-allowed;
-}
-
-
-.actionButton.inactive:hover {
-  background-color: rgba(130, 130, 130, 1);
 }
 
 .actionButton::before {
@@ -132,6 +135,9 @@
 
 .actionButton.completed {
   padding-right: 36px;
+  background-color: rgba(49, 100, 146, 1);
+  color: white;
+  border: none;
 }
 
 .error {
@@ -147,11 +153,61 @@
 
 .tableContainer {
   overflow-x: auto;
+  overflow-y: visible;
   margin-top: 16px;
   border: 1px solid rgba(49, 100, 146, 1);
   border-radius: 4px;
+  position: relative;
 }
 
+.tableSection {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.tableWrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Стили для кнопок удаления строк */
+.deleteButtonsColumn {
+  width: 24px;
+  min-width: 24px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.deleteButtonRow {
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deleteRowButton {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deleteRowButton:hover {
+  background-color: rgba(229, 237, 245, 1);
+}
+
+.deleteRowIcon {
+  width: 14px;
+  height: 14px;
+}
 
 .table {
   width: 100%;
@@ -173,6 +229,13 @@
   font-size: 14px;
 }
 
+/* Размеры для колонки "Номер", чтобы не расширялась при добавлении новых строк */
+.table th:first-child,
+.table td:first-child {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+}
 
 .table td {
   padding: 12px;
@@ -180,6 +243,7 @@
   font-size: 13px;
   color: rgba(0, 51, 102, 1);
 }
+
 
 
 .table tbody tr:hover {
@@ -329,7 +393,7 @@
   transform: translateY(0);
 }
 
-/* Стили для кнопки добавления строки в таблицу "Поиск аналогов" */
+/* Стили для кнопки добавления строки */
 .tableAddRowButton {
   width: 100%;
   height: 24px;
@@ -354,8 +418,13 @@
   text-align: center;
 }
 
+.buttonIcon {
+  width: 14px;
+  height: 14px;
+}
 
-/* Стили для кнопки определения параметров новой строки в таблице "Поиск аналогов" */
+
+/* Стили для кнопки определения параметров новой строки */
 .mergedCell {
   padding: 0 !important;
   margin: 0;
@@ -383,7 +452,7 @@
 }
 
 
-/* Стили для строки ввода номера патента в таблице "Поиск аналогов" */
+/* Стили для строки ввода номера патента */
 .numberInput {
   width: 100%;
   height: 100%;
@@ -392,6 +461,57 @@
   font-size: 12px;
 }
 
+/* Стили для изменения данных в ячейках */
+.cellInput {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: rgba(0, 51, 102, 1);
+  background: transparent;
+}
+
+.cellTextarea {
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  outline: none;
+  resize: vertical;
+  font-size: 13px;
+  color: rgba(0, 51, 102, 1);
+  background: transparent;
+  font-family: inherit;
+}
+
+/* Стили для кнопок переходов на шаг назад или вперед */
+.historyButtonsRow {
+  display: flex;
+  gap: 8px;
+  margin-left: 0;
+  margin-top: 2px;
+  margin-bottom: 16px;
+}
+
+.historyButton {
+  background-color: rgba(49, 100, 146, 1);
+  color: white;
+  border: none;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  gap: 0;
+  border-radius: 8px;
+}
+
+.historyButtonIcon{
+  filter: brightness(0) invert(1);
+}
+
+.historyButtonIcon.inactive{
+  filter: grayscale(100%);
+}
 
 /* Скелетон анимация для ячеек пустой строки */
 .noPaddingCell {

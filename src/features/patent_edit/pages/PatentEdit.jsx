@@ -59,7 +59,7 @@ const FORM_FIELDS = [
   {
     name: 'search_query',
     label: 'Поисковый запрос',
-    placeholder: 'Введите ключевые слова для поиска',
+    placeholder: 'Введите запрос с операторами',
     type: 'input',
     validation: { required: 'Поисковый запрос обязателен' }
   }

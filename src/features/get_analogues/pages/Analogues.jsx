@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { useReference } from '../../../contexts/ReferenceContext'
@@ -9,6 +9,13 @@ import * as XLSX from 'xlsx'
 import styles from '../styles/Analogues.module.css'
 import authService from "../../../services/auth/authService.js";
 import { SkeletonTable } from '../../../components/Skeleton/SkeletonTable'
+import SaveResetWindow from '../../../components/SaveResetWindow/SaveResetWindow.jsx' // Импорт окна подтверждения/сброса данных после редактирования
+import plusIcon from '../../../resources/plus.svg'
+import penIcon from '../../../resources/pen.svg'
+import downloadIcon from '../../../resources/download.svg'
+import deleteIcon from '../../../resources/red-bin.svg'
+import returnIcon from '../../../resources/return.svg'
+import forwardIcon from '../../../resources/forward.svg'
 
 const DEBUG = true; // ← Переключатель: true = логи включены, false = выключены
 const log = (label, data) => {
@@ -22,7 +29,6 @@ const logGroup = (label, callback) => {
   console.groupEnd();
   return result;
 };
-import plusIcon from '../../../resources/plus.svg'
 
 const downloadExcel = (analogs, patentId) => {
   const headers = ['Номер', 'Название', 'Ссылка', 'Реферат', 'Формула']
@@ -54,13 +60,24 @@ export default function Analogues() {
   const { id } = useParams()
     const { startTask, getTask, updateTask } = useReference()
   const { showWarning, showSuccess, showError } = useToast()
-  const [localDataLoaded, setLocalDataLoaded] = useState(false)
-  const [localDataLoaded, setLocalDataLoaded] = useState(false)
+  // const [localDataLoaded, setLocalDataLoaded] = useState(false)
+  // const [localDataLoaded, setLocalDataLoaded] = useState(false)
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
   const [prevStatus, setPrevStatus] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [tableData, setTableData] = useState(null)
   const [isAddRowClicked, setIsAddRowClicked] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editHistory, setEditHistory] = useState([])
+  const [redoHistory, setRedoHistory] = useState([])
+  const [rowHeights, setRowHeights] = useState([])
+  const [headerHeight, setHeaderHeight] = useState(0)
+  const [saveModalVisible, setSaveModalVisible] = useState(false)
+  const tableDataRef = useRef([])
+  const activeEditCellRef = useRef(null)
+  const rowRefs = useRef([])
+  const headerRef = useRef(null)
+  const isEditingRef = useRef(false)
   const task = getTask(id)
   const loading = task?.status === TASK_STATUS.RUNNING
   const error = task?.error
@@ -179,8 +196,60 @@ export default function Analogues() {
   useEffect(() => {
     if (analogsData) {
       setTableData(Object.values(analogsData))
+      setIsEditMode(false)
+      setEditHistory([]) // очищаем историю для сохранения шагов изменения таблички
+      setRedoHistory([]) // очищаем историю для сохранения шагов изменения таблички
+      setIsAddRowClicked(false)
     }
   }, [analogsData])
+
+  // Сохраняется значение без перерисовки компонентов (это для стрелочек)
+  useEffect(() => {
+    tableDataRef.current = tableData || []
+  }, [tableData])
+
+  // Приводит строки к оной высоте для правильной отрисовки кнопок удаления
+  useEffect(() => {
+    if (!isEditMode) return
+
+    const updateAllHeights = () => {
+      const heights = rowRefs.current.map(row => row?.getBoundingClientRect().height || 48)
+      setRowHeights(heights)
+      setHeaderHeight(headerRef.current?.getBoundingClientRect().height || 48)
+    }
+
+    updateAllHeights()
+
+    const observers = rowRefs.current.map(row => {
+      if (!row) return null
+
+      const observer = new ResizeObserver(updateAllHeights)
+      observer.observe(row)
+      return observer
+    })
+
+    return () => {
+      observers.forEach(obs => obs?.disconnect())
+    }
+  }, [isEditMode, tableData])
+
+  // Обработка Enter для показа окна сохранить/сбросить данные
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isEditMode) return
+
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        setSaveModalVisible(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isEditMode])
 
   const handleGetAnalogs = async () => {
     const clickTime = Date.now()
@@ -243,7 +312,82 @@ export default function Analogues() {
     }
   }
 
+  const toggleEditMode = () => {
+    if (isEditMode) {
+      setSaveModalVisible(true)
+      return
+    }
+
+    setIsEditMode(true)
+  }
+
+// Код реализации возвращения на предыдущие шаги или перехода вперед на несколько шагов
+
+  const cloneSnapshot = (rows) => (rows || []).map(row => ({ ...row })) // Копируем данные чтобы не изменять исходник
+  const areSnapshotsEqual = (left, right) => JSON.stringify(left) === JSON.stringify(right)
+
+  const saveEditStep = () => {
+    const snapshot = cloneSnapshot(tableDataRef.current)
+
+    setEditHistory(prev => {
+      const lastSnapshot = prev[prev.length - 1]
+      if (lastSnapshot && areSnapshotsEqual(lastSnapshot, snapshot)) {
+        return prev
+      }
+
+      return [...prev, snapshot]
+    })
+    setRedoHistory([])
+  }
+
+  // Предыдущие шаги в режиме редактирования
+  const handleUndoEditStep = () => {
+    setEditHistory(prev => {
+      if (prev.length === 0) return prev
+
+      const previousSnapshot = cloneSnapshot(prev[prev.length - 1])
+      const currentSnapshot = cloneSnapshot(tableDataRef.current)
+
+      setRedoHistory(next => {
+        const lastRedoSnapshot = next[next.length - 1]
+        if (lastRedoSnapshot && areSnapshotsEqual(lastRedoSnapshot, currentSnapshot)) {
+          return next
+        }
+        return [...next, currentSnapshot]
+      })
+
+      setTableData(previousSnapshot)
+      setIsAddRowClicked(false)
+
+      return prev.slice(0, -1)
+    })
+  }
+  // Следующие шаги в режиме редактирования
+  const handleRedoEditStep = () => {
+    setRedoHistory(prev => {
+      if (prev.length === 0) return prev
+
+      const nextSnapshot = cloneSnapshot(prev[prev.length - 1])
+      const currentSnapshot = cloneSnapshot(tableDataRef.current)
+
+      setEditHistory(history => {
+        const lastEditSnapshot = history[history.length - 1]
+        if (lastEditSnapshot && areSnapshotsEqual(lastEditSnapshot, currentSnapshot)) {
+          return history
+        }
+        return [...history, currentSnapshot]
+      })
+
+      setTableData(nextSnapshot)
+      setIsAddRowClicked(false)
+
+      return prev.slice(0, -1)
+    })
+  }
+// Конец функции стрелочек
+
   const handleAddRowButtonClick = () => {
+    saveEditStep()
     setTableData(prev => [
     ...prev,
     {
@@ -275,6 +419,7 @@ export default function Analogues() {
       return
     }
 
+    saveEditStep()
     updateRowAtIndex(index, { isAddingNumber: false, isLoading: true })
 
     await new Promise(resolve => setTimeout(resolve, 2000))
@@ -294,134 +439,300 @@ export default function Analogues() {
   const handleNumberChange = (index, value) => {
     updateRowAtIndex(index, { number: value })
   }
+  
+  // Функционал по изменению значения в ячейке таблицы
+  const getRowFieldValue = (row, field) => {
+    if (field === 'link') return row.link || row.analog_link || ''
+    return row[field] || ''
+  }
+
+  const handleCellFocus = (index, field) => {
+    const cellKey = `${index}-${field}`
+    if (activeEditCellRef.current === cellKey) return
+
+    activeEditCellRef.current = cellKey
+    isEditingRef.current = false
+  }
+
+  const handleCellBlur = () => {
+    activeEditCellRef.current = null
+    isEditingRef.current = false
+  }
+
+  const handleCellChange = (index, field, value) => {
+    if (!isEditingRef.current) {
+      saveEditStep()
+      isEditingRef.current = true
+    }
+
+    updateRowAtIndex(index, { [field]: value })
+  }
+
+  // Функционал удаления строки
+  const handleDeleteRow = (index) => {
+    saveEditStep()
+    setTableData(prev => prev.filter((_, rowIndex) => rowIndex !== index))
+    setIsAddRowClicked(false)
+  }
 
   const renderAnalogsTable = () => {
-    if (!analogsData) {
-      console.log('🟡 [Analogues] renderAnalogsTable: нет данных')
-      return null
-    }
-    console.log('🟡 [Analogues] renderAnalogsTable: рендерим таблицу с', Object.keys(analogsData).length, 'аналогами')
+    if (!analogsData) return null
 
     return (
-      <div className={styles.tableWrapper}>
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Номер</th>
-                <th>Название</th>
-                <th>Ссылка</th>
-                <th>Реферат</th>
-                <th>Формула</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableData?.map((analog, index) => {
-                const isNewRow = analog.isNew
-                
-                if (isNewRow) {
-                  if (analog.isAddingNumber) {
-                    return (
-                      <tr key={index}>
-                        <td>
+      <div className={styles.tableSection}>
+        {isEditMode && (
+          <div className={styles.deleteButtonsColumn} style={{ paddingTop: `${headerHeight}px` }}>
+            {tableData?.map((_, index) => (
+              <div
+                key={`delete-${index}`}
+                className={styles.deleteButtonRow}
+                style={{ height: `${rowHeights[index] || 48}px` }}
+              >
+                <button
+                  type="button"
+                  className={styles.deleteRowButton}
+                  onClick={() => handleDeleteRow(index)}
+                  aria-label="Удалить строку"
+                >
+                  <img
+                    src={deleteIcon}
+                    alt=""
+                    className={styles.deleteRowIcon}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className={styles.tableWrapper}>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead ref={headerRef}>
+                <tr>
+                  <th>Номер</th>
+                  <th>Название</th>
+                  <th>Ссылка</th>
+                  <th>Реферат</th>
+                  <th>Формула</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {tableData?.map((analog, index) => {
+                  const isNewRow = analog.isNew
+
+                  if (isNewRow) {
+                    if (analog.isAddingNumber) {
+                      return (
+                        <tr key={index} ref={el => { rowRefs.current[index] = el }}>
+                          <td>
+                            <input
+                              type="text"
+                              value={analog.number}
+                              onChange={(e) =>
+                                handleNumberChange(index, e.target.value)
+                              }
+                              className={styles.numberInput}
+                              placeholder="Введите номер"
+                            />
+                          </td>
+
+                          <td colSpan={4} className={styles.mergedCell}>
+                            <button
+                              type="button"
+                              className={styles.loadDataRowButton}
+                              onClick={() => handleLoadRowData(index)}
+                              disabled={!analog.number}
+                            >
+                              Определить
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    }
+
+                    if (analog.isLoading) {
+                      return (
+                        <tr key={index} ref={el => { rowRefs.current[index] = el }}>
+                          <td className={styles.noPaddingCell}>
+                            <div className={styles.skeletonCell} />
+                          </td>
+                          <td className={styles.noPaddingCell}>
+                            <div className={styles.skeletonCell} />
+                          </td>
+                          <td className={styles.noPaddingCell}>
+                            <div className={styles.skeletonCell} />
+                          </td>
+                          <td className={styles.noPaddingCell}>
+                            <div className={styles.skeletonCell} />
+                          </td>
+                          <td className={styles.noPaddingCell}>
+                            <div className={styles.skeletonCell} />
+                          </td>
+                        </tr>
+                      )
+                    }
+
+                    if (analog.isDataLoaded) {
+                      return (
+                        <tr key={index} ref={el => { rowRefs.current[index] = el }}>
+                          <td>{analog.number}</td>
+                          <td>
+                            {isEditMode ? (
+                              <input
+                                type="text"
+                                value={getRowFieldValue(analog, 'title')}
+                                onFocus={() => handleCellFocus(index, 'title')}
+                                onBlur={handleCellBlur}
+                                onChange={(e) => handleCellChange(index, 'title', e.target.value)}
+                                className={styles.cellInput}
+                              />
+                            ) : (
+                              analog.title
+                            )}
+                          </td>
+                          <td>
+                            {isEditMode ? (
+                              <input
+                                type="text"
+                                value={getRowFieldValue(analog, 'link')}
+                                onFocus={() => handleCellFocus(index, 'link')}
+                                onBlur={handleCellBlur}
+                                onChange={(e) => handleCellChange(index, 'link', e.target.value)}
+                                className={styles.cellInput}
+                              />
+                            ) : (
+                              <a
+                                href={analog.analog_link || analog.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={styles.link}
+                              >
+                                Открыть
+                              </a>
+                            )}
+                          </td>
+                          <td>
+                            {isEditMode ? (
+                              <textarea
+                                value={getRowFieldValue(analog, 'abstract')}
+                                onFocus={() => handleCellFocus(index, 'abstract')}
+                                onBlur={handleCellBlur}
+                                onChange={(e) => handleCellChange(index, 'abstract', e.target.value)}
+                                className={styles.cellTextarea}
+                              />
+                            ) : (
+                              analog.abstract
+                            )}
+                          </td>
+                          <td>
+                            {isEditMode ? (
+                              <textarea
+                                value={getRowFieldValue(analog, 'claims')}
+                                onFocus={() => handleCellFocus(index, 'claims')}
+                                onBlur={handleCellBlur}
+                                onChange={(e) => handleCellChange(index, 'claims', e.target.value)}
+                                className={styles.cellTextarea}
+                              />
+                            ) : (
+                              analog.claims
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    }
+                  }
+
+                  return (
+                    <tr key={index} ref={el => { rowRefs.current[index] = el }}>
+                      <td>{analog.analog_num || analog.number}</td>
+                      <td>
+                        {isEditMode ? (
                           <input
                             type="text"
-                            value={analog.number}
-                            onChange={(e) => handleNumberChange(index, e.target.value)}
-                            className={styles.numberInput}
-                            placeholder="Введите номер"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleLoadRowData(index)
-                              }
-                            }}
+                            value={getRowFieldValue(analog, 'title')}
+                            onFocus={() => handleCellFocus(index, 'title')}
+                            onBlur={handleCellBlur}
+                            onChange={(e) => handleCellChange(index, 'title', e.target.value)}
+                            className={styles.cellInput}
                           />
-                        </td>
-                        <td colSpan={4} className={styles.mergedCell}>
-                          <button
-                            type="button"
-                            className={styles.loadDataRowButton}
-                            onClick={() => handleLoadRowData(index)}
-                            disabled={!analog.number || analog.number.trim() === ''}
-                          >
-                            <span>Определить</span>
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  }
-
-                  if (analog.isLoading) {
-                    return (
-                      <tr key={index} className={styles.newTableRow}>
-                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
-                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
-                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
-                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
-                        <td className={styles.noPaddingCell}><div className={styles.skeletonCell} /></td>
-                      </tr>
-                    )
-                  }
-
-                  if (analog.isDataLoaded) {
-                    return (
-                      <tr key={index}>
-                        <td>{analog.number}</td>
-                        <td>{analog.title}</td>
-                        <td>
-                          <a 
-                            href={analog.analog_link || analog.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                        ) : (
+                          analog.title
+                        )}
+                      </td>
+                      <td>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={getRowFieldValue(analog, 'link')}
+                            onFocus={() => handleCellFocus(index, 'link')}
+                            onBlur={handleCellBlur}
+                            onChange={(e) => handleCellChange(index, 'link', e.target.value)}
+                            className={styles.cellInput}
+                          />
+                        ) : (
+                          <a
+                            href={analog.analog_link || analog.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className={styles.link}
                           >
                             Открыть
                           </a>
-                        </td>
-                        <td>{analog.abstract}</td>
-                        <td>{analog.claims}</td>
-                      </tr>
-                    )
-                  }
-                }
+                        )}
+                      </td>
+                      <td>
+                        {isEditMode ? (
+                          <textarea
+                            value={getRowFieldValue(analog, 'abstract')}
+                            onFocus={() => handleCellFocus(index, 'abstract')}
+                            onBlur={handleCellBlur}
+                            onChange={(e) => handleCellChange(index, 'abstract', e.target.value)}
+                            className={styles.cellTextarea}
+                          />
+                        ) : (
+                          analog.abstract
+                        )}
+                      </td>
+                      <td>
+                        {isEditMode ? (
+                          <textarea
+                            value={getRowFieldValue(analog, 'claims')}
+                            onFocus={() => handleCellFocus(index, 'claims')}
+                            onBlur={handleCellBlur}
+                            onChange={(e) => handleCellChange(index, 'claims', e.target.value)}
+                            className={styles.cellTextarea}
+                          />
+                        ) : (
+                          analog.claims
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {isEditMode && !isAddRowClicked && (
+            <button
+              type="button"
+              className={styles.tableAddRowButton}
+              onClick={handleAddRowButtonClick}
+            >
+              <img
+                src={plusIcon}
+                alt=""
+                className={styles.addRowImg}
+              />
+            </button>
+          )}
 
-                return (
-                  <tr key={index}>
-                    <td>{analog.analog_num || analog.number}</td>
-                    <td>{analog.title}</td>
-                    <td>
-                      <a
-                        href={analog.analog_link || analog.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.link}
-                      >
-                        Открыть
-                      </a>
-                    </td>
-                    <td>{analog.abstract}</td>
-                    <td>{analog.claims}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
         </div>
-        {!isAddRowClicked && (
-          <button
-            type="button"
-            className={styles.tableAddRowButton}
-            onClick={handleAddRowButtonClick}
-            aria-label="Добавить новый патент в таблицу"
-          >
-            <img src={plusIcon} alt="" className={styles.addRowImg} aria-hidden="true" />
-          </button>
-        )}
       </div>
     )
   }
-
+ // Добавлены кнопки: редактирование и стрелочки
+ // В самом конце добавлено окно сохранения/сброса данных после редактирования
   return (
     <>
       <div className={styles.container}>
@@ -433,13 +744,62 @@ export default function Analogues() {
           >
             Получить аналоги
           </button>
+          {isCompleted && (
+            <button 
+              className={`${styles.actionButton} ${isEditMode ? styles.tableButtonActive : ''}`}
+              onClick={toggleEditMode}
+              disabled={isLoading}
+            >
+              <img src={penIcon} alt="" className={`${styles.buttonIcon} ${isEditMode ? styles.editIcon : ''}`} aria-hidden="true" />
+              Редактировать таблицу
+            </button>
+          )}
           <button 
-            className={`${styles.actionButton} ${!isCompleted ? styles.inactive : ''}`}
+            className={`${styles.actionButton} ${isEditMode ? styles.inactive : ''}`}
             onClick={handleDownload}
+            disabled={isEditMode}
           >
+            <img src={downloadIcon} alt="" className={`${styles.buttonIcon} ${isEditMode ? styles.darkIcon : ''}`} aria-hidden="true" />
             Скачать аналоги
           </button>
+          {isEditMode && (
+            <button
+              className={`${styles.actionButton} ${styles.finishEditButton}`}
+              onClick={() => setSaveModalVisible(true)}
+            >
+              Завершить редактирование
+            </button>
+          )}
         </div>
+  
+        {isEditMode && isCompleted && (
+          <div className={styles.historyButtonsRow}>
+            <button
+              className={`${styles.actionButton} ${styles.historyButton} ${editHistory.length === 0 ? styles.inactive : ''}`}
+              onClick={handleUndoEditStep}
+              disabled={isLoading || editHistory.length === 0}
+            >
+              <img 
+                src={returnIcon} 
+                alt="" 
+                className={`${styles.buttonIcon} ${styles.historyButtonIcon} ${editHistory.length === 0 ? styles.inactive : ''}`} 
+                aria-hidden="true" 
+              />
+            </button>
+            <button
+              className={`${styles.actionButton} ${styles.historyButton} ${redoHistory.length === 0 ? styles.inactive : ''}`}
+              onClick={handleRedoEditStep}
+              disabled={isLoading || redoHistory.length === 0}
+            >
+              <img 
+                src={forwardIcon} 
+                alt="" 
+                className={`${styles.buttonIcon} ${styles.historyButtonIcon} ${redoHistory.length === 0 ? styles.inactive : ''}`} 
+                aria-hidden="true" 
+              />
+            </button>
+          </div>
+        )}
 
         {isLoading && logGroup('🟢 ПОКАЗЫВАЕМ СКЕЛЕТОН', () => {
           log('Причина', 'isLoading = true')
@@ -467,6 +827,24 @@ export default function Analogues() {
         </div>,
         document.body
       )}
+      <SaveResetWindow
+        isOpen={saveModalVisible}
+        onClose={() => setSaveModalVisible(false)}
+        onSave={() => {
+          setIsEditMode(false)
+          setEditHistory([])
+          setRedoHistory([])
+          setSaveModalVisible(false)
+        }}
+
+        onReset={() => {
+          setTableData(Object.values(analogsData))
+          setIsEditMode(false)
+          setEditHistory([])
+          setRedoHistory([])
+          setSaveModalVisible(false)
+        }}
+      />
     </>
   )
 }
