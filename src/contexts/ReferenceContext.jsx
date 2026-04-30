@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import referenceService, { TASK_STATUS } from '../services/reference/referenceService'
+import authService from '../services/auth/authService'
+import { API_PROCESSOR_ENDPOINTS } from '../services/apiConfig'
 
 const ReferenceContext = createContext()
 
@@ -61,18 +63,18 @@ export function ReferenceProvider({ children }) {
 
   const restoreAnalogPolling = useCallback((patentId, taskId) => {
     console.log('🟣 [Context] restoreAnalogPolling: ЗАПУЩЕН ПОЛЛИНГ', { patentId, taskId })
-    
+
     analogIntervalsRef.current[patentId] = setInterval(async () => {
       const pollStart = Date.now()
       console.log('🟣 [Context] polling: интервал сработал', new Date().toISOString())
-      
+
       try {
         console.log('🟣 [Context] polling: вызываем getTaskResult...')
         const result = await referenceService.getTaskResult(taskId, patentId)
         const pollEnd = Date.now()
-        
-        console.log('🟣 [Context] polling: getTaskResult вернул:', { 
-          status: result?.status, 
+
+        console.log('🟣 [Context] polling: getTaskResult вернул:', {
+          status: result?.status,
           hasData: !!result?.data,
           time: (pollEnd - pollStart) + 'мс'
         })
@@ -91,7 +93,7 @@ export function ReferenceProvider({ children }) {
               error: null
             }
           }))
-          
+
           console.log('🟣 [Context] polling: analogTasks обновлён на SUCCESS')
         } else if (result.status === TASK_STATUS.FAILED || result.status === TASK_STATUS.CANCELLED) {
           console.log('🟣 [Context] polling: FAILED/CANCELLED - останавливаем поллинг')
@@ -227,41 +229,75 @@ export function ReferenceProvider({ children }) {
   }, [])
 
   const startAnalogTask = useCallback(async (patentId) => {
-    console.log('🔵 [Context] startAnalogTask: ПЕРЕД вызовом', { 
-    patentId, 
-    currentStatus: analogTasks[patentId]?.status 
-    })
     console.log('🔵 [Context] startAnalogTask: ЗАПУСК', { patentId, time: new Date().toISOString() })
-    
+
     try {
-      console.log('🔵 [Context] Вызываем referenceService.createAnalogLink...')
-      const createStart = Date.now()
-      const createResponse = await referenceService.createAnalogLink(patentId)
-      const createEnd = Date.now()
-      console.log('🔵 [Context] createAnalogLink вернул:', createResponse, 'за', (createEnd - createStart), 'мс')
-      
-      const taskId = createResponse.task_id
-      console.log('🔵 [Context] Устанавливаем статус RUNNING для taskId:', taskId)
+      // Шаг 1: Создаём задачу, получаем task_id
+      const { task_id } = await referenceService.createAnalogLink(patentId)
+      console.log('🔵 [Context] Получен task_id:', task_id)
 
       setAnalogTasks(prev => ({
         ...prev,
         [patentId]: {
-          taskId,
+          taskId: task_id,
           status: TASK_STATUS.RUNNING,
           data: null,
           error: null
         }
       }))
 
-      if (analogIntervalsRef.current[patentId]) {
-        console.log('🔵 [Context] Очищаем старый интервал поллинга')
-        clearInterval(analogIntervalsRef.current[patentId])
+      // Шаг 2: Опрашиваем статус задачи
+      const pollStatus = async (taskId) => {
+        const statusResponse = await authService.authenticatedFetch(
+          `/api/v2/job/${taskId}`,
+          { method: 'GET', headers: { Accept: 'application/json' } }
+        )
+
+        if (!statusResponse.ok) {
+          throw new Error(`Ошибка получения статуса: ${statusResponse.status}`)
+        }
+
+        const job = await statusResponse.json()
+        console.log('🔵 [Context] Статус задачи:', job.status)
+
+        if (job.status === 'completed') {
+          // Шаг 3: Забираем данные
+          const dataResponse = await authService.authenticatedFetch(
+            API_PROCESSOR_ENDPOINTS.GET_SEARCH_RESULT(patentId),
+            { method: 'GET', headers: { Accept: 'application/json' } }
+          )
+
+          if (!dataResponse.ok) {
+            throw new Error(`Ошибка получения данных: ${dataResponse.status}`)
+          }
+
+          const analogsData = await dataResponse.json()
+          console.log('🔵 [Context] Данные получены:', Object.keys(analogsData || {}))
+
+          setAnalogTasks(prev => ({
+            ...prev,
+            [patentId]: {
+              taskId,
+              status: TASK_STATUS.SUCCESS,
+              data: analogsData,
+              error: null
+            }
+          }))
+          return
+        }
+
+        if (job.status === 'failed') {
+          throw new Error(job.error || 'Задача завершилась с ошибкой')
+        }
+
+        // Продолжаем опрос
+        await new Promise(r => setTimeout(r, 2000))
+        return pollStatus(taskId)
       }
 
-      console.log('🔵 [Context] Запускаем restoreAnalogPolling')
-      restoreAnalogPolling(patentId, taskId)
+      await pollStatus(task_id)
+      return task_id
 
-      return taskId
     } catch (error) {
       console.error('🔵 [Context] ОШИБКА startAnalogTask:', error)
       setAnalogTasks(prev => ({
@@ -275,7 +311,7 @@ export function ReferenceProvider({ children }) {
       }))
       throw error
     }
-  }, [restoreAnalogPolling])
+  }, [])
 
   const startCompareTask = useCallback(async (patentId) => {
     try {
@@ -434,9 +470,9 @@ export function ReferenceProvider({ children }) {
   }, [])
 
   return (
-    <ReferenceContext.Provider value={{ 
+    <ReferenceContext.Provider value={{
       startTask: startAnalogTask,
-      getTask: getAnalogTask, 
+      getTask: getAnalogTask,
       clearTask: clearAnalogTask,
       updateTask: updateAnalogTask,
       startCompareTask,
@@ -447,7 +483,7 @@ export function ReferenceProvider({ children }) {
       getPrototypeTask,
       clearPrototypeTask,
       updatePrototypeTask,
-      clearTaskForPatent,  
+      clearTaskForPatent,
       analogTasks,
       compareTasks,
       prototypeTasks

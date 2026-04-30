@@ -51,58 +51,35 @@ class ReferenceService {
         const analogsData = MOCK_ANALOGS[patentId] || MOCK_ANALOGS['1']
         globalMockTaskManager.completeTask(taskId, analogsData)
       }, 3000)
-      console.log('🟠 [Service] createAnalogLink: оффлайн - возвращаем task_id', { taskId })
       return { task_id: taskId }
     }
 
     console.log('🟠 [Service] createAnalogLink: выполняем POST запрос...')
     const postStart = Date.now()
-    
+
+    // Шаг 1: Запуск задачи
     const response = await authService.authenticatedFetch(
-      API_PROCESSOR_ENDPOINTS.CREATE_SEARCH,
-      { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ patent_id: patentId }) }
+      API_PROCESSOR_ENDPOINTS.CREATE_SEARCH_BATCH,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ patent_id: String(patentId) })
+      }
     )
-    
+
     const postEnd = Date.now()
     console.log('🟠 [Service] createAnalogLink: POST завершён за', (postEnd - postStart), 'мс, status:', response.status)
 
-    // 🔹 ЛОГ: если есть лишний GET - он будет виден здесь
-    if (response.ok) {
-      console.log('🟠 [Service] createAnalogLink: POST успешен, продолжаем...')
-      
-      // Проверка: есть ли лишний запрос ниже
-      const response1 = await authService.authenticatedFetch(
-        API_PROCESSOR_ENDPOINTS.GET_SEARCH_RESULT(patentId),
-        { method: 'GET', headers: { 'Content-Type': 'application/json', Accept: 'application/json' } }
-      )
-      const getEnd = Date.now()
-      console.log('🟠 [Service] createAnalogLink: ДОП. GET завершён за', (getEnd - postEnd), 'мс, status:', response1.status)
-      
-      const data = await response1.json()
-      const analogsData = data.analogs || data
-      console.log('🟠 [Service] createAnalogLink: данные получены, keys:', Object.keys(data))
-      
-      if (analogsData) {
-        localStorage.setItem(`analogs_data_${patentId}`, JSON.stringify(analogsData))
-        console.log('🟠 [Service] createAnalogLink: данные сохранены в localStorage')
-      }
-    } else {
+    if (!response.ok) {
       console.error('🟠 [Service] createAnalogLink: POST ошибка', response.status)
       throw new Error('Ошибка создания задачи поиска аналогов')
     }
 
-    const taskId = generateMockTaskId('analog')
-    console.log('🟠 [Service] createAnalogLink: создаём задачу в менеджере', { taskId })
-    globalMockTaskManager.createTask(taskId, patentId, 'analogs')
-    
-    // 🔹 ЛОГ: если есть completeTask - задача завершится мгновенно
-    if (typeof analogsData !== 'undefined') {
-      console.log('🟠 [Service] createAnalogLink: вызываем completeTask (если есть)', { taskId })
-      globalMockTaskManager.completeTask(taskId, analogsData)
-    }
+    const { task_id } = await response.json()
+    console.log('🟠 [Service] createAnalogLink: получен task_id', { task_id })
 
-    console.log('🟠 [Service] createAnalogLink: возвращаем task_id', { taskId })
-    return { task_id: taskId }
+    // Возвращаем только task_id — опрос будет в ReferenceContext
+    return { task_id }
   }
 
   async getTaskResult(taskId, patentId) {

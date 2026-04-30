@@ -78,7 +78,7 @@ export default function Analogues() {
   const rowRefs = useRef([])
   const headerRef = useRef(null)
   const isEditingRef = useRef(false)
-  const task = getTask(id)
+  const task = getTask(id) || {}
   const loading = task?.status === TASK_STATUS.RUNNING
   const error = task?.error
   const analogsData = task?.data
@@ -114,66 +114,6 @@ export default function Analogues() {
     console.groupEnd()
   }, [isLoading, isCompleted, task?.status, analogsData, isSubmitting, id])
 
-  /*useEffect(() => {
-    const fetchData = async () => {
-      if (localDataLoaded) return;
-
-      const savedData = localStorage.getItem(`analogs_${id}`)
-      if (savedData && !task?.data) {
-        try {
-          const data = JSON.parse(savedData)
-          const analogsData = data.analogs || data
-
-          if (updateTask) {
-            updateTask(id, {
-              status: TASK_STATUS.SUCCESS,
-              data: analogsData,
-              error: null
-            });
-            setLocalDataLoaded(true);
-            showSuccess('Аналоги успешно загружены из кэша');
-          }
-        } catch (e) {
-          console.error('Ошибка парсинга данных:', e)
-        }
-        return
-      }
-
-      try {
-        const response = await authService.authenticatedFetch(
-          API_PROCESSOR_ENDPOINTS.GET_SEARCH_RESULT(id),
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
-          }
-        )
-
-        if (response.ok) {
-          const data = await response.json()
-          const analogsData = data.analogs || data
-
-          localStorage.setItem(`analogs_${id}`, JSON.stringify(analogsData))
-
-          if (updateTask) {
-            updateTask(id, {
-              status: TASK_STATUS.SUCCESS,
-              data: analogsData,
-              error: null
-            });
-            showSuccess('Аналоги успешно загружены с сервера');
-          }
-        }
-      } catch (err) {
-        console.log('❌ Данных аналогов на сервере нет')
-      }
-    }
-
-    fetchData()
-  }, [id, localDataLoaded, updateTask, showSuccess])*/
-
   useEffect(() => {
     if (task?.status !== prevStatus) {
       console.log('🔵 [Analogues] Статус изменился:', { old: prevStatus, new: task?.status })
@@ -195,13 +135,18 @@ export default function Analogues() {
 
   useEffect(() => {
     if (analogsData) {
-      setTableData(Object.values(analogsData))
+      const dataArray = analogsData.analogs || analogsData
+      setTableData(Object.values(dataArray))
       setIsEditMode(false)
       setEditHistory([]) // очищаем историю для сохранения шагов изменения таблички
       setRedoHistory([]) // очищаем историю для сохранения шагов изменения таблички
       setIsAddRowClicked(false)
     }
   }, [analogsData])
+
+  useEffect(() => {
+    fetchCurrentAnalogs();
+  }, [id]);
 
   // Сохраняется значение без перерисовки компонентов (это для стрелочек)
   useEffect(() => {
@@ -384,18 +329,20 @@ export default function Analogues() {
       return prev.slice(0, -1)
     })
   }
-// Конец функции стрелочек
 
+// Конец функции стрелочек
   const handleAddRowButtonClick = () => {
     saveEditStep()
     setTableData(prev => [
     ...prev,
     {
+      id: crypto.randomUUID(),
       number: '',
       title: '',
       link: '',
       abstract: '',
       claims: '',
+      description: '',
       isNew: true,
       isLoading: false,
       isDataLoaded: false,
@@ -409,31 +356,6 @@ export default function Analogues() {
     setTableData(prev => prev.map((row, i) => 
       i === index ? { ...row, ...updates } : row
     ))
-  }
-
-  const handleLoadRowData = async (index) => {
-    const currentRow = tableData[index]
-    
-    if (!currentRow?.number || currentRow.number.trim() === '') {
-      showWarning('Введите номер патента перед загрузкой данных')
-      return
-    }
-
-    saveEditStep()
-    updateRowAtIndex(index, { isAddingNumber: false, isLoading: true })
-
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    const mockData = {
-      title: 'Название патента',
-      link: 'https://example.com',
-      abstract: 'Краткое описание патента...',
-      claims: 'Формула изобретения...'
-    }
-
-    updateRowAtIndex(index, { ...mockData, isLoading: false, isDataLoaded: true })
-
-    setIsAddRowClicked(false)
   }
 
   const handleNumberChange = (index, value) => {
@@ -474,6 +396,204 @@ export default function Analogues() {
     setTableData(prev => prev.filter((_, rowIndex) => rowIndex !== index))
     setIsAddRowClicked(false)
   }
+
+  const handleSaveEdits = async () => {
+    // Защита от двойного нажатия
+    if (isSubmitting) return;
+
+    const currentData = tableData;  // актуальный снимок
+    if (!currentData || currentData.length === 0) {
+      showWarning('Нет данных для сохранения');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Собираем словарь аналогов, пропуская незавершённые новые строки
+      const analogsMap = {};
+      for (const row of currentData) {
+        // Пропускаем строки, где ещё не загружены данные
+        if (row.isAddingNumber || row.isLoading) continue;
+        // Дополнительная страховка: если по какой-то причине нет id или title
+        if (!row.id || !row.title) continue;
+
+        const analogId = String(row.id);
+        analogsMap[analogId] = {
+          id: analogId,
+          title: row.title || '',
+          analog_num: row.analog_num || row.number || '',
+          analog_link: row.analog_link || row.link || '',
+          abstract: row.abstract || '',
+          claims: row.claims || '',
+          description: row.description || '',
+        };
+      }
+
+      const requestBody = {
+        patent_id: Number(id),
+        analogs: analogsMap,
+      };
+      const url = API_PROCESSOR_ENDPOINTS.BASE_SEARCH;
+      const token = authService.getAccessToken();
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Ошибка ${response.status}`);
+      }
+
+      showSuccess('Изменения сохранены');
+
+      // Выходим из режима редактирования и очищаем историю
+      setIsEditMode(false);
+      setEditHistory([]);
+      setRedoHistory([]);
+      setSaveModalVisible(false);
+    } catch (err) {
+      showError(err.message || 'Ошибка сохранения аналогов');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLoadRowData = async (rowId) => {
+    console.log('[DEBUG] handleLoadRowData вызван для rowId:', rowId);
+    const currentRow = tableData.find(row => row.id === rowId);
+    console.log('[DEBUG] currentRow:', currentRow);
+
+    if (!currentRow?.number || currentRow.number.trim() === '') {
+      console.warn('[DEBUG] Номер пустой');
+      showWarning('Введите номер патента перед загрузкой данных');
+      return;
+    }
+    if (currentRow.isLoading) {
+      console.warn('[DEBUG] Уже загружается');
+      return;
+    }
+
+    saveEditStep();
+    console.log('[DEBUG] Переводим строку в режим загрузки');
+    updateRowById(rowId, {
+      isAddingNumber: false,
+      isLoading: true,
+      isDataLoaded: false,
+    });
+
+    try {
+      console.log('[DEBUG] Запуск поиска для номера:', currentRow.number);
+      const startUrl = API_PROCESSOR_ENDPOINTS.CREATE_SEARCH_ANALOG(currentRow.number.trim());
+      const token = authService.getAccessToken();
+      console.log('[DEBUG] POST url:', startUrl);
+
+      const startResponse = await fetch(startUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ patent_id: Number(id) }),
+      });
+      console.log('[DEBUG] startResponse status:', startResponse.status);
+
+      if (!startResponse.ok) {
+        throw new Error(`Ошибка запуска поиска (${startResponse.status})`);
+      }
+
+      const { task_id } = await startResponse.json();
+      console.log('[DEBUG] Получен task_id:', task_id);
+      if (!task_id) throw new Error('Не получен идентификатор задачи');
+
+      const pollInterval = 1000;
+      const maxPolls = 120;
+      let pollCount = 0;
+
+      const checkStatus = async () => {
+        console.log(`[DEBUG] Опрос статуса task_id=${task_id}, попытка ${pollCount+1}`);
+        try {
+          const statusUrl = `/api/v2/job/${task_id}`;
+          const resp = await fetch(statusUrl, { headers: { Authorization: `Bearer ${token}` } });
+          console.log('[DEBUG] statusResponse status:', resp.status);
+          if (!resp.ok) {
+            console.warn('[DEBUG] Сервер вернул ошибку, пробуем снова');
+            if (pollCount++ < maxPolls) {
+              setTimeout(checkStatus, pollInterval);
+              return;
+            }
+            throw new Error('Тайм-аут ожидания результата');
+          }
+
+          const job = await resp.json();
+          console.log('[DEBUG] job:', job);
+
+          if (job.status === 'RUNNING' || job.status === 'PENDING') {
+            console.log('[DEBUG] Задача ещё выполняется...');
+            if (pollCount++ < maxPolls) {
+              setTimeout(checkStatus, pollInterval);
+            } else {
+              throw new Error('Тайм-аут ожидания результата');
+            }
+          } else if (job.status === 'SUCCESS' || job.status === 'completed') {
+            console.log('[DEBUG] Задача завершена успешно, вызываем fetchCurrentAnalogs()');
+            await fetchCurrentAnalogs();
+            console.log('[DEBUG] fetchCurrentAnalogs() завершён');
+            setIsAddRowClicked(false);
+            console.log('[DEBUG] setIsAddRowClicked(false)');
+          } else {
+            console.error('[DEBUG] Задача завершена с ошибкой, status:', job.status, 'error:', job.error);
+            throw new Error(job.error || 'Поиск завершился ошибкой');
+          }
+        } catch (err) {
+          console.error('[DEBUG] Ошибка в checkStatus:', err);
+          throw err;
+        }
+      };
+
+      await checkStatus();
+      console.log('[DEBUG] checkStatus завершён без ошибок');
+    } catch (err) {
+      console.error('[DEBUG] Ошибка в handleLoadRowData:', err);
+      updateRowById(rowId, {
+        isLoading: false,
+        isAddingNumber: true,
+        isDataLoaded: false,
+      });
+      showError(err.message);
+    }
+  };
+
+  const fetchCurrentAnalogs = async () => {
+    console.log('[DEBUG] fetchCurrentAnalogs вызван');
+    try {
+      const url = API_PROCESSOR_ENDPOINTS.GET_SEARCH_RESULT(Number(id));
+      console.log('[DEBUG] GET url:', url);
+      const token = authService.getAccessToken();
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      console.log('[DEBUG] fetchCurrentAnalogs response status:', response.status);
+      if (!response.ok) throw new Error('Ошибка загрузки аналогов');
+      const data = await response.json();
+      console.log('[DEBUG] Полученные данные:', data);
+      const analogsArray = Object.values(data.analogs || {});
+      console.log('[DEBUG] Массив аналогов:', analogsArray);
+      setTableData(analogsArray);
+      console.log('[DEBUG] tableData обновлён');
+      return analogsArray;
+    } catch (err) {
+      console.error('[DEBUG] Ошибка в fetchCurrentAnalogs:', err);
+      showError(err.message);
+    }
+  };
+
+  const updateRowById = (rowId, updates) => {
+    setTableData(prev => prev.map(row => row.id === rowId ? { ...row, ...updates } : row));
+  };
 
   const renderAnalogsTable = () => {
     if (!analogsData) return null
@@ -541,7 +661,7 @@ export default function Analogues() {
                             <button
                               type="button"
                               className={styles.loadDataRowButton}
-                              onClick={() => handleLoadRowData(index)}
+                              onClick={() => handleLoadRowData(analog.id)}
                               disabled={!analog.number}
                             >
                               Определить
@@ -830,15 +950,11 @@ export default function Analogues() {
       <SaveResetWindow
         isOpen={saveModalVisible}
         onClose={() => setSaveModalVisible(false)}
-        onSave={() => {
-          setIsEditMode(false)
-          setEditHistory([])
-          setRedoHistory([])
-          setSaveModalVisible(false)
-        }}
+        onSave={handleSaveEdits}
 
         onReset={() => {
           setTableData(Object.values(analogsData))
+          setTableData(Object.values(analogsData));
           setIsEditMode(false)
           setEditHistory([])
           setRedoHistory([])

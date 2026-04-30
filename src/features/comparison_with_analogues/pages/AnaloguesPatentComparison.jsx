@@ -161,73 +161,42 @@ export default function AnaloguesPatentComparison() {
     console.groupEnd()
   }, [isLoading, isCompleted, task?.status, comparisonData, isSubmitting, isAnalogCompleted, id])
 
-  /*useEffect(() => {
-    const fetchData = async () => {
-      // Если данные уже загружены из localStorage, пропускаем
-      if (localDataLoaded) return;
-
-      const savedData = localStorage.getItem(`analogs_statistics_${id}`)
-      if (savedData && !task?.data) {
-        try {
-          const data = JSON.parse(savedData)
-          // Данные могут быть обёрнуты в поле analogs или быть сразу объектом
-          const comparisonData = data.analogs || data
-
-          if (updateCompareTask) {
-            updateCompareTask(id, {
-              status: TASK_STATUS.SUCCESS,
-              data: comparisonData,
-              error: null
-            });
-            setLocalDataLoaded(true);
-            showSuccess('Данные сопоставления загружены из кэша');
-          }
-        } catch (e) {
-          console.error('Ошибка парсинга данных из localStorage:', e)
-        }
-        return
-      }
-
-      // Если в localStorage нет — запрашиваем с сервера
+  useEffect(() => {
+    const fetchComparisonData = async () => {
       try {
-        console.log('🌐 Запрашиваем данные сопоставления с сервера')
-        const response = await authService.authenticatedFetch(
-          API_PROCESSOR_ENDPOINTS.GET_STATISTICS(id),
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-            },
-          }
-        )
+        log('🌐 Запрашиваем данные сопоставления с сервера');
+        const token = authService.getAccessToken();
+        const response = await fetch(
+            API_PROCESSOR_ENDPOINTS.GET_STATISTICS(id),
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+            }
+        );
 
         if (response.ok) {
-          const data = await response.json()
-          const comparisonData = data.analogs || data
-
-          // Сохраняем в localStorage для будущих загрузок
-          localStorage.setItem(`analogs_statistics_${id}`, JSON.stringify(comparisonData))
-
+          const data = await response.json();
+          const comparisonData = data.analogs || data;
           if (updateCompareTask) {
             updateCompareTask(id, {
               status: TASK_STATUS.SUCCESS,
               data: comparisonData,
-              error: null
+              error: null,
             });
-            setLocalDataLoaded(true);
-            showSuccess('Данные сопоставления загружены с сервера');
           }
-        } else {
-          console.log('❌ Ответ сервера не OK');
+        } else if (response.status !== 404) {
+          log('❌ Ошибка загрузки данных', response.status);
         }
       } catch (err) {
-        console.log('❌ Ошибка запроса к серверу:', err)
+        log('❌ Ошибка запроса к серверу:', err);
       }
-    }
+    };
 
-    fetchData()
-  }, [id, task?.data, localDataLoaded, updateCompareTask, showSuccess])*/
+    fetchComparisonData();
+  }, [id, updateCompareTask]);
 
   useEffect(() => {
     if (task?.status !== prevStatus) {
