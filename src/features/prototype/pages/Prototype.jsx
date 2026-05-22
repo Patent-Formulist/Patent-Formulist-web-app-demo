@@ -143,6 +143,7 @@ export default function Prototype() {
   const loading = prototypeTask?.status === TASK_STATUS.RUNNING
   const error = prototypeTask?.error
   const prototypeData = prototypeTask?.data
+  const prototypeNumber = prototypeData?.prototype?.number || '—'
   const isCompleted = prototypeTask?.status === TASK_STATUS.SUCCESS && prototypeData
   const isLoading = isSubmitting || prototypeTask?.status === TASK_STATUS.RUNNING
 
@@ -435,7 +436,7 @@ export default function Prototype() {
                 <tr>
                   <th className={styles.featureHeader}>Признак</th>
                   <th className={styles.featureHeader}>Признак патента</th>
-                  <th className={styles.featureHeader}>Признак прототипа</th>
+                  <th className={styles.featureHeader}>Признак прототипа {prototypeNumber}</th>
                 </tr>
               </thead>
               <tbody>
@@ -504,7 +505,7 @@ export default function Prototype() {
             <thead>
               <tr>
                 <th className={styles.numberHeader}>Номер</th>
-                <th className={styles.featureHeader}>Признаки прототипа</th>
+                <th className={styles.featureHeader}>Признаки прототипа {prototypeNumber}</th>
                 <th className={styles.featureHeader}>Признаки патента</th>
               </tr>
             </thead>
@@ -533,7 +534,7 @@ export default function Prototype() {
             <thead>
               <tr>
                 <th className={styles.numberHeader}>Номер</th>
-                <th className={styles.featureHeader}>Признаки прототипа</th>
+                <th className={styles.featureHeader}>Признаки прототипа {prototypeNumber}</th>
               </tr>
             </thead>
             <tbody>
