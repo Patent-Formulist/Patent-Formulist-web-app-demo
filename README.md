@@ -40,10 +40,10 @@ npm start
 
 proxy: {
   '/api': {
-    target: 'https://formulinked.ru',     
+    target: 'https://localhost.ru',     
     changeOrigin: true,
     secure: false,
-    rewrite: path => path.replace(/^\/api/, '/api/v1'),
+    rewrite: path => path.replace(/^\/api/, '/api/v2'),
   },
 }
 

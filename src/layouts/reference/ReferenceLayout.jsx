@@ -120,6 +120,14 @@ export default function PatentAnalogLayout() {
         >
           Выявление прототипа
         </button>
+
+        <button
+          className={`${styles.actionButton} ${isActive('/schemes') ? styles.activeButton : ''} ${(!isPrototypeCompleted || isAnalogsRunning || isCompareRunning || isPrototypeRunning) ? styles.inactiveButton : ''}`}
+          onClick={() => handleNavigate('/schemes')}
+          disabled={!isPrototypeCompleted || isAnalogsRunning || isCompareRunning || isPrototypeRunning}
+        >
+          Составление схем
+        </button>
       </div>
       <Outlet />
     </div>

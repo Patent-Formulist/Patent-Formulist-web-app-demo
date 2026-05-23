@@ -2,8 +2,8 @@ import { APP_CONFIG } from './appConfig'
 
 // ФАЙЛ В GITIGNORE, ПРИ ИЗМЕНЕНИИ УБРАТЬ
 const URL = APP_CONFIG.USE_OFFLINE_MODE 
-  ? 'mock://localhost/api/v1'
-  : 'https://formulinked.ru/api/v1'
+  ? 'mock://localhost/api/v2'
+  : 'http://localhost/api/v2'
 // ИЗМЕНЕННЫЙ УЧАСТОК КОДА МЕЖДУ КОММЕНТАРИЕВ
 
 export const API_AUTH_ENDPOINTS = {
@@ -36,7 +36,9 @@ export const API_PROCESSOR_ENDPOINTS = {
   PATENT_CREATE_ATTRIBUTE_CHECKING: (uuid) => `${URL}/patents/${uuid}/attributes/checking/`,
   */
 
-  CREATE_SEARCH: `${URL}/processor/search/`,
+  BASE_SEARCH: `${URL}/processor/search/`,
+  CREATE_SEARCH_BATCH: `${URL}/processor/search/batch`,
+  CREATE_SEARCH_ANALOG: (analog_num) => `${URL}/processor/search/${analog_num}`,
   CREATE_STATISTICS: `${URL}/processor/statistics/`,
   CREATE_IDENTITY: `${URL}/processor/identity/`,
 
