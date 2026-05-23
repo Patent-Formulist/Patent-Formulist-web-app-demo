@@ -42,6 +42,7 @@ export const API_PROCESSOR_ENDPOINTS = {
   CREATE_STATISTICS: `${URL}/processor/statistics/`,
   CREATE_IDENTITY: `${URL}/processor/identity/`,
 
+  GET_JOB: (id) => `${URL}/job/${id}`,
   GET_PROGRESS: (patentUuid) => `${URL}/processor/patent/${patentUuid}/progress`,
   GET_SEARCH_RESULT: (uuid) => `${URL}/processor/patent/${uuid}/search/`,
   GET_STATISTICS: (uuid) => `${URL}/processor/patent/${uuid}/statistics/`,

@@ -147,7 +147,7 @@ class ReferenceService {
 
   async createAnalogCompare(patentId) {
     console.log('🟠 [Service] createAnalogCompare: ЗАПУСК', { patentId, time: new Date().toISOString() })
-    
+
     if (APP_CONFIG.USE_OFFLINE_MODE) {
       console.log('🟠 [Service] createAnalogCompare: оффлайн режим')
       await mockDelay(null)
@@ -161,80 +161,41 @@ class ReferenceService {
       return { task_id: taskId }
     }
 
+    // Clear stale cache so polling won't return old data while the new job runs.
+    localStorage.removeItem(`analogs_statistics_${patentId}`)
+
     console.log('🟠 [Service] createAnalogCompare: выполняем POST запрос...')
     const postStart = Date.now()
-    
-    const response1 = await authService.authenticatedFetch(
+
+    const response = await authService.authenticatedFetch(
       API_PROCESSOR_ENDPOINTS.CREATE_STATISTICS,
       { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ patent_id: patentId }) }
     )
-    
-    const postEnd = Date.now()
-    console.log('🟠 [Service] createAnalogCompare: POST завершён за', (postEnd - postStart), 'мс, status:', response1.status)
 
-    if (!response1.ok) {
-      console.error('🟠 [Service] createAnalogCompare: POST ошибка', response1.status)
-      switch (response1.status) {
+    const postEnd = Date.now()
+    console.log('🟠 [Service] createAnalogCompare: POST завершён за', (postEnd - postStart), 'мс, status:', response.status)
+
+    if (!response.ok) {
+      console.error('🟠 [Service] createAnalogCompare: POST ошибка', response.status)
+      switch (response.status) {
         case 404: throw new Error('Патент не найден')
         case 400: throw new Error('Сначала получите аналоги')
         case 408: throw new Error('Превышено время ожидания')
         case 504: throw new Error('Сервер не ответил вовремя')
         case 503: throw new Error('Сервер временно недоступен')
         default:
-          if (response1.status >= 500) throw new Error(`Ошибка сервера (${response1.status})`)
-          throw new Error(`Ошибка создания задачи (${response1.status})`)
+          if (response.status >= 500) throw new Error(`Ошибка сервера (${response.status})`)
+          throw new Error(`Ошибка создания задачи (${response.status})`)
       }
     }
 
-    // 🔹 ЛОГ: если есть лишний GET - он будет виден здесь
-    if (response1.ok) {
-      console.log('🟠 [Service] createAnalogCompare: POST успешен, продолжаем...')
-      
-      const response8 = await authService.authenticatedFetch(
-        API_PROCESSOR_ENDPOINTS.GET_STATISTICS(patentId),
-        { method: 'GET', headers: { 'Content-Type': 'application/json', Accept: 'application/json' } }
-      )
-      const getEnd = Date.now()
-      console.log('🟠 [Service] createAnalogCompare: ДОП. GET завершён за', (getEnd - postEnd), 'мс, status:', response8.status)
-      
-      const data = await response8.json()
-      const analogsData = data.analogs || data
-      console.log('🟠 [Service] createAnalogCompare: данные получены, keys:', Object.keys(data))
-      
-      if (analogsData) {
-        localStorage.setItem(`analogs_statistics_${patentId}`, JSON.stringify(analogsData))
-        console.log('🟠 [Service] createAnalogCompare: данные сохранены в localStorage')
-      }
-    }
-
-    const taskId = generateMockTaskId('compare')
-    console.log('🟠 [Service] createAnalogCompare: создаём задачу в менеджере', { taskId })
-    globalMockTaskManager.createTask(taskId, patentId, 'compare')
-    
-    // 🔹 ЛОГ: если есть completeTask - задача завершится мгновенно
-    if (typeof analogsData !== 'undefined') {
-      console.log('🟠 [Service] createAnalogCompare: вызываем completeTask (если есть)', { taskId })
-      globalMockTaskManager.completeTask(taskId, analogsData)
-    }
-
-    console.log('🟠 [Service] createAnalogCompare: возвращаем task_id', { taskId })
-    return { task_id: taskId }
+    const { job_id } = await response.json()
+    console.log('🟠 [Service] createAnalogCompare: получен job_id', { job_id })
+    return { task_id: job_id }
   }
 
   async getCompareResult(taskId, patentId) {
     console.log('🟤 [Service] getCompareResult: ВЫЗОВ', { taskId, patentId, time: new Date().toISOString() })
-    
-    if (patentId) {
-      const savedData = localStorage.getItem(`analogs_statistics_${patentId}`)
-      console.log('🟤 [Service] getCompareResult: проверяем localStorage:', savedData ? 'данные есть' : 'данных нет')
-      if (savedData) {
-        try {
-          const data = JSON.parse(savedData)
-          console.log('🟤 [Service] getCompareResult: возвращаем из кэша', { status: TASK_STATUS.SUCCESS, hasData: !!data, keys: Object.keys(data) })
-          return { status: TASK_STATUS.SUCCESS, message: 'Готово', task_id: taskId, data }
-        } catch (e) { console.error('🟤 [Service] getCompareResult: ошибка парсинга кэша:', e) }
-      }
-    }
 
     if (APP_CONFIG.USE_OFFLINE_MODE) {
       console.log('🟤 [Service] getCompareResult: оффлайн режим')
@@ -246,14 +207,40 @@ class ReferenceService {
       return { status: TASK_STATUS.RUNNING, message: 'Выполняется...', task_id: taskId, progress: task.progress }
     }
 
-    console.log('🟤 [Service] getCompareResult: РЕАЛЬНЫЙ РЕЖИМ - запрос к серверу')
+    // Check real job status before fetching data.
+    const jobResponse = await authService.authenticatedFetch(
+      API_PROCESSOR_ENDPOINTS.GET_JOB(taskId),
+      { method: 'GET', headers: { Accept: 'application/json' } }
+    )
+    if (!jobResponse.ok) throw new Error('Ошибка получения статуса задачи')
+    const job = await jobResponse.json()
+    console.log('🟤 [Service] getCompareResult: статус задачи', job.status)
+
+    if (job.status === 'pending' || job.status === 'running') {
+      return { status: TASK_STATUS.RUNNING, message: 'Выполняется...', task_id: taskId }
+    }
+    if (job.status === 'failed' || job.status === 'cancelled') {
+      return { status: TASK_STATUS.FAILED, message: job.error || 'Задача завершилась с ошибкой', task_id: taskId }
+    }
+
+    // Job completed — try cache first, then fetch.
+    if (patentId) {
+      const savedData = localStorage.getItem(`analogs_statistics_${patentId}`)
+      if (savedData) {
+        try {
+          const data = JSON.parse(savedData)
+          console.log('🟤 [Service] getCompareResult: возвращаем из кэша')
+          return { status: TASK_STATUS.SUCCESS, message: 'Готово', task_id: taskId, data }
+        } catch (e) { console.error('🟤 [Service] getCompareResult: ошибка парсинга кэша:', e) }
+      }
+    }
+
+    console.log('🟤 [Service] getCompareResult: РЕАЛЬНЫЙ РЕЖИМ - загружаем данные с сервера')
     const getStart = Date.now()
-    
     const response = await authService.authenticatedFetch(
       API_PROCESSOR_ENDPOINTS.GET_STATISTICS(patentId),
       { method: 'GET', headers: { 'Content-Type': 'application/json', Accept: 'application/json' } }
     )
-    
     const getEnd = Date.now()
     console.log('🟤 [Service] getCompareResult: GET завершён за', (getEnd - getStart), 'мс, status:', response.status)
 
@@ -265,12 +252,11 @@ class ReferenceService {
     const data = await response.json()
     console.log('🟤 [Service] getCompareResult: данные получены, keys:', Object.keys(data))
 
-    let normalizedData = data;
+    let normalizedData = data
     if (data && typeof data === 'object' && patentId && data[patentId]) {
-      normalizedData = data[patentId];
-      console.log('🟤 [Service] getCompareResult: данные распакованы по ключу:', patentId);
+      normalizedData = data[patentId]
+      console.log('🟤 [Service] getCompareResult: данные распакованы по ключу:', patentId)
     }
-
     if (patentId && normalizedData) {
       localStorage.setItem(`analogs_statistics_${patentId}`, JSON.stringify(normalizedData))
       console.log('🟤 [Service] getCompareResult: данные сохранены в localStorage')
@@ -282,7 +268,7 @@ class ReferenceService {
 
   async createPrototypeTask(patentId) {
     console.log('🟠 [Service] createPrototypeTask: ЗАПУСК', { patentId, time: new Date().toISOString() })
-    
+
     if (APP_CONFIG.USE_OFFLINE_MODE) {
       console.log('🟠 [Service] createPrototypeTask: оффлайн режим')
       await mockDelay(null)
@@ -296,14 +282,17 @@ class ReferenceService {
       return { task_id: taskId }
     }
 
+    // Clear stale cache so polling won't return old data while the new job runs.
+    localStorage.removeItem(`analogs_identity_${patentId}`)
+
     console.log('🟠 [Service] createPrototypeTask: выполняем POST запрос...')
     const postStart = Date.now()
-    
+
     const response = await authService.authenticatedFetch(
       API_PROCESSOR_ENDPOINTS.CREATE_IDENTITY,
       { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ patent_id: patentId }) }
     )
-    
+
     const postEnd = Date.now()
     console.log('🟠 [Service] createPrototypeTask: POST завершён за', (postEnd - postStart), 'мс, status:', response.status)
 
@@ -316,59 +305,13 @@ class ReferenceService {
       }
     }
 
-    // 🔹 ЛОГ: если есть лишний GET - он будет виден здесь
-    if (response.ok) {
-      console.log('🟠 [Service] createPrototypeTask: POST успешен, продолжаем...')
-      
-      const response2 = await authService.authenticatedFetch(
-        API_PROCESSOR_ENDPOINTS.GET_IDENTITY(patentId),
-        { method: 'GET', headers: { 'Content-Type': 'application/json', Accept: 'application/json' } }
-      )
-      const getEnd = Date.now()
-      console.log('🟠 [Service] createPrototypeTask: ДОП. GET завершён за', (getEnd - postEnd), 'мс, status:', response2.status)
-      
-      const data = await response2.json();
-      const analogsData = data.analogs || data;
-      console.log('🟠 [Service] createPrototypeTask: данные получены, keys:', Object.keys(data))
-
-      let normalizedData = analogsData;
-      if (analogsData && typeof analogsData === 'object' && analogsData[patentId]) {
-        normalizedData = analogsData[patentId];
-        console.log('🟠 [Service] createPrototypeTask: данные распакованы по ключу:', patentId);
-      }
-
-      localStorage.setItem(`analogs_identity_${patentId}`, JSON.stringify(normalizedData));
-      console.log('🟠 [Service] createPrototypeTask: данные сохранены в localStorage')
-    }
-
-    const taskId = generateMockTaskId('prototype')
-    console.log('🟠 [Service] createPrototypeTask: создаём задачу в менеджере', { taskId })
-    globalMockTaskManager.createTask(taskId, patentId, 'prototype')
-    
-    // 🔹 ЛОГ: если есть completeTask - задача завершится мгновенно
-    if (typeof analogsData !== 'undefined') {
-      console.log('🟠 [Service] createPrototypeTask: вызываем completeTask (если есть)', { taskId })
-      globalMockTaskManager.completeTask(taskId, analogsData)
-    }
-
-    console.log('🟠 [Service] createPrototypeTask: возвращаем task_id', { taskId })
-    return { task_id: taskId }
+    const { job_id } = await response.json()
+    console.log('🟠 [Service] createPrototypeTask: получен job_id', { job_id })
+    return { task_id: job_id }
   }
 
   async getPrototypeResult(taskId, patentId) {
     console.log('🟤 [Service] getPrototypeResult: ВЫЗОВ', { taskId, patentId, time: new Date().toISOString() })
-    
-    if (patentId) {
-      const savedData = localStorage.getItem(`analogs_identity_${patentId}`)
-      console.log('🟤 [Service] getPrototypeResult: проверяем localStorage:', savedData ? 'данные есть' : 'данных нет')
-      if (savedData) {
-        try {
-          const data = JSON.parse(savedData)
-          console.log('🟤 [Service] getPrototypeResult: возвращаем из кэша', { status: TASK_STATUS.SUCCESS, hasData: !!data })
-          return { status: TASK_STATUS.SUCCESS, message: 'Готово', task_id: taskId, data }
-        } catch (e) { console.error('🟤 [Service] getPrototypeResult: ошибка парсинга кэша:', e) }
-      }
-    }
 
     if (APP_CONFIG.USE_OFFLINE_MODE) {
       console.log('🟤 [Service] getPrototypeResult: оффлайн режим')
@@ -380,40 +323,63 @@ class ReferenceService {
       return { status: TASK_STATUS.RUNNING, message: 'Выполняется...', task_id: taskId, progress: task.progress }
     }
 
-    console.log('🟤 [Service] getPrototypeResult: РЕАЛЬНЫЙ РЕЖИМ - запрос к серверу')
-    const getStart = Date.now()
-    
-    try {
-      const response = await authService.authenticatedFetch(
-        API_PROCESSOR_ENDPOINTS.GET_IDENTITY(patentId),
-        { method: 'GET', headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } }
-      )
-      
-      const getEnd = Date.now()
-      console.log('🟤 [Service] getPrototypeResult: GET завершён за', (getEnd - getStart), 'мс, status:', response.status)
+    // Check real job status before fetching data.
+    const jobResponse = await authService.authenticatedFetch(
+      API_PROCESSOR_ENDPOINTS.GET_JOB(taskId),
+      { method: 'GET', headers: { Accept: 'application/json' } }
+    )
+    if (!jobResponse.ok) throw new Error('Ошибка получения статуса задачи')
+    const job = await jobResponse.json()
+    console.log('🟤 [Service] getPrototypeResult: статус задачи', job.status)
 
-      if (!response.ok) throw new Error(`Ошибка ${response.status}: ${response.statusText}`)
-
-      const blob = await response.blob()
-      const arrayBuffer = await blob.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-      const parsedData = parseIdentityExcel(worksheet)
-      
-      console.log('🟤 [Service] getPrototypeResult: данные распарсены, rows:', parsedData.rows?.length)
-
-      if (patentId && parsedData) {
-        localStorage.setItem(`analogs_identity_${patentId}`, JSON.stringify(parsedData))
-        console.log('🟤 [Service] getPrototypeResult: данные сохранены в localStorage')
-      }
-
-      console.log('🟤 [Service] getPrototypeResult: ВОЗВРАЩАЕМ', { status: TASK_STATUS.SUCCESS, hasData: !!parsedData })
-      return { status: TASK_STATUS.SUCCESS, message: 'Готово', task_id: taskId, data: parsedData }
-
-    } catch (error) {
-      console.error('🟤 [Service] getPrototypeResult: ОШИБКА:', error)
-      throw new Error('Ошибка получения данных прототипа: ' + error.message)
+    if (job.status === 'pending' || job.status === 'running') {
+      return { status: TASK_STATUS.RUNNING, message: 'Выполняется...', task_id: taskId }
     }
+    if (job.status === 'failed' || job.status === 'cancelled') {
+      return { status: TASK_STATUS.FAILED, message: job.error || 'Задача завершилась с ошибкой', task_id: taskId }
+    }
+
+    // Job completed — try cache first, then fetch.
+    if (patentId) {
+      const savedData = localStorage.getItem(`analogs_identity_${patentId}`)
+      if (savedData) {
+        try {
+          const data = JSON.parse(savedData)
+          console.log('🟤 [Service] getPrototypeResult: возвращаем из кэша')
+          return { status: TASK_STATUS.SUCCESS, message: 'Готово', task_id: taskId, data }
+        } catch (e) { console.error('🟤 [Service] getPrototypeResult: ошибка парсинга кэша:', e) }
+      }
+    }
+
+    console.log('🟤 [Service] getPrototypeResult: РЕАЛЬНЫЙ РЕЖИМ - загружаем данные с сервера')
+    const getStart = Date.now()
+    const response = await authService.authenticatedFetch(
+      API_PROCESSOR_ENDPOINTS.GET_IDENTITY(patentId),
+      { method: 'GET', headers: { 'Content-Type': 'application/json', Accept: 'application/json' } }
+    )
+    const getEnd = Date.now()
+    console.log('🟤 [Service] getPrototypeResult: GET завершён за', (getEnd - getStart), 'мс, status:', response.status)
+
+    if (!response.ok) {
+      console.error('🟤 [Service] getPrototypeResult: GET ошибка', response.status)
+      throw new Error(`Ошибка получения данных прототипа: ${response.status}`)
+    }
+
+    const rawData = await response.json()
+    console.log('🟤 [Service] getPrototypeResult: данные получены, keys:', Object.keys(rawData))
+
+    let normalizedData = rawData
+    if (rawData && typeof rawData === 'object' && rawData[patentId]) {
+      normalizedData = rawData[patentId]
+      console.log('🟤 [Service] getPrototypeResult: данные распакованы по ключу:', patentId)
+    }
+    if (patentId && normalizedData) {
+      localStorage.setItem(`analogs_identity_${patentId}`, JSON.stringify(normalizedData))
+      console.log('🟤 [Service] getPrototypeResult: данные сохранены в localStorage')
+    }
+
+    console.log('🟤 [Service] getPrototypeResult: ВОЗВРАЩАЕМ', { status: TASK_STATUS.SUCCESS, hasData: !!normalizedData })
+    return { status: TASK_STATUS.SUCCESS, message: 'Готово', task_id: taskId, data: normalizedData }
   }
 
   async setPrototype(patentId, prototypeNumber) {
