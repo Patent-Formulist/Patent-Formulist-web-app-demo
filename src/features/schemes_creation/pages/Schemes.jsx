@@ -223,8 +223,8 @@ export default function Schemes() {
             setFigures(figs)
             setFiguresLoaded(true)
           }
-        } catch { /* фигуры необязательны при загрузке */ }
-      } catch { /* пустое состояние до импорта */ }
+        } catch { }
+      } catch { }
     }
     init()
   }, [id, fetchElements, fetchFigures])

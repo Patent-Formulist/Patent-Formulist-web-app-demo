@@ -2,8 +2,6 @@
   padding: 5px 20px 40px 20px;
 }
 
-/* ── Button containers ─────────────────────────────────────────────── */
-
 .buttonContainer {
   display: flex;
   justify-content: flex-start;
@@ -26,8 +24,6 @@
 .figuresButtonContainer {
   margin-top: 32px;
 }
-
-/* ── Action buttons ────────────────────────────────────────────────── */
 
 .actionButton {
   background-color: rgba(255, 255, 255, 1);
@@ -67,7 +63,6 @@
   height: 14px;
 }
 
-/* Loading spinner */
 .actionButton::after {
   content: '';
   position: absolute;
@@ -90,7 +85,6 @@
   100% { transform: rotate(-360deg); }
 }
 
-/* Completed checkmark */
 .actionButton::before {
   content: '';
   position: absolute;
@@ -112,7 +106,6 @@
   border: none;
 }
 
-/* ── Table section (with delete column) ───────────────────────────── */
 
 .tableSection {
   display: flex;
@@ -157,8 +150,6 @@
   width: 14px;
   height: 14px;
 }
-
-/* ── Tables ────────────────────────────────────────────────────────── */
 
 .tableContainer {
   overflow-x: auto;
@@ -228,7 +219,6 @@
 }
 .checkbox:disabled { cursor: default; }
 
-/* Add row button */
 .tableAddRowButton {
   width: 100%;
   height: 24px;
@@ -247,7 +237,6 @@
   margin-top: 2px;
 }
 
-/* Cell inputs */
 .cellInput {
   width: 100%;
   border: none;
@@ -258,7 +247,6 @@
   font-family: inherit;
 }
 
-/* ── Figures list ──────────────────────────────────────────────────── */
 
 .figuresList {
   display: flex;
@@ -266,7 +254,6 @@
   gap: 40px;
 }
 
-/* One figure block — no outer border, no card */
 .figureBlock {
   display: flex;
   flex-direction: column;
@@ -306,7 +293,6 @@
   color: rgba(0, 51, 102, 1);
 }
 
-/* Drawing rectangle */
 .drawingPlaceholder {
   width: 100%;
   height: 280px;
@@ -324,7 +310,6 @@
   font-style: italic;
 }
 
-/* Description rectangle */
 .figureDescriptionBox {
   margin-top: 10px;
   border: 1px solid rgba(49, 100, 146, 1);
@@ -354,15 +339,12 @@
   box-sizing: border-box;
 }
 
-/* Elements title — plain, no borders */
 .figureElementsTitle {
   font-size: 13px;
   font-weight: 600;
   color: rgba(0, 51, 102, 1);
   margin: 16px 0 10px 0;
 }
-
-/* ── Export buttons ────────────────────────────────────────────────── */
 
 .exportButtonContainer {
   display: flex;
@@ -385,8 +367,6 @@
   white-space: nowrap;
 }
 .exportButton:hover { background-color: rgba(229, 237, 245, 1); }
-
-/* ── Skeleton ──────────────────────────────────────────────────────── */
 
 .noPaddingCell {
   padding: 0 !important;
