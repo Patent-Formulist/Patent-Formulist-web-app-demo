@@ -48,6 +48,16 @@ export const API_PROCESSOR_ENDPOINTS = {
   GET_IDENTITY: (uuid) => `${URL}/processor/patent/${uuid}/identity/`,
 }
 
+export const API_DRAWINGS_ENDPOINTS = {
+  ELEMENTS: (uuid) => `${URL}/patents/${uuid}/drawings/elements`,
+  ELEMENT: (uuid, elId) => `${URL}/patents/${uuid}/drawings/elements/${elId}`,
+  ELEMENTS_REORDER: (uuid) => `${URL}/patents/${uuid}/drawings/elements/reorder`,
+  FIGURES: (uuid) => `${URL}/patents/${uuid}/drawings/figures`,
+  FIGURE: (uuid, figId) => `${URL}/patents/${uuid}/drawings/figures/${figId}`,
+  IMPORT: (uuid) => `${URL}/patents/${uuid}/drawings/import`,
+  EXPORT: (uuid) => `${URL}/patents/${uuid}/drawings/export`,
+}
+ 
 export const API_PROFILE_ENDPOINTS = {
   PROFILE_GET: `${URL}/users/profile`,
   PROFILE_UPDATE: `${URL}/users/profile`,
