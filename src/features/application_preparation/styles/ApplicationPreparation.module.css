@@ -1,0 +1,403 @@
+.container {
+  padding: 5px 20px 40px 20px;
+}
+
+.buttonContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.finishEditButton {
+  margin-left: auto;
+}
+
+.buttonContainer.editing .actionButton:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 1);
+  color: rgba(49, 100, 146, 1);
+}
+
+.buttonContainer.editing .actionButton.tableButtonActive:hover:not(:disabled) {
+  background-color: rgba(49, 100, 146, 1);
+  color: white;
+}
+
+.buttonContainer.editing .actionButton.finishEditButton:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 1);
+  color: rgba(49, 100, 146, 1);
+}
+
+.buttonContainer.editing .actionButton.completed:hover:not(:disabled) {
+  background-color: rgba(49, 100, 146, 1);
+  color: white;
+}
+
+.actionButton.inactive {
+  background-color: rgba(240, 240, 240, 1);
+  color: rgba(150, 150, 150, 1);
+  border: 1px solid rgba(180, 180, 180, 1);
+  cursor: not-allowed;
+}
+
+.actionButton {
+  background-color: rgba(255, 255, 255, 1);
+  color: rgba(49, 100, 146, 1);
+  border: 1px solid rgba(49, 100, 146, 1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.actionButton:hover:not(:disabled) {
+  background-color: rgba(229, 237, 245, 1);
+}
+
+.tableButtonActive {
+  background-color: rgba(49, 100, 146, 1);
+  color: white;
+  border: none;
+}
+
+.buttonIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.editIcon {
+  filter: brightness(0) invert(1);
+}
+
+.actionButton::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: conic-gradient(from 180deg at 50% 50%, #FF9900 0deg, rgba(230, 155, 13, 0.701923) 207.69deg, rgba(172, 159, 42, 0) 360deg);
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), white 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), white 0);
+  animation: spin 1s linear infinite;
+  opacity: 0;
+  visibility: hidden;
+}
+.actionButton.loading::after { opacity: 1; visibility: visible; }
+.actionButton.loading { padding-right: 36px; }
+
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
+.actionButton::before {
+  content: '';
+  position: absolute;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  background-image: url('../../../resources/done.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0;
+  visibility: hidden;
+}
+.actionButton.completed::before { opacity: 1; visibility: visible; }
+.actionButton.completed {
+  padding-right: 36px;
+  background-color: rgba(49, 100, 146, 1);
+  color: white;
+  border: none;
+}
+
+.outdatedBadge {
+  font-size: 12px;
+  color: rgba(180, 100, 0, 1);
+  background-color: rgba(255, 243, 220, 1);
+  border: 1px solid rgba(230, 160, 50, 0.5);
+  border-radius: 8px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.card {
+  border: 1px solid rgba(49, 100, 146, 1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(49, 100, 146, 1);
+  background-color: rgba(229, 237, 245, 1);
+  overflow-x: auto;
+}
+
+.tabs::-webkit-scrollbar { height: 4px; }
+.tabs::-webkit-scrollbar-thumb {
+  background-color: rgba(49, 100, 146, 0.3);
+  border-radius: 2px;
+}
+
+.tab {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(49, 100, 146, 1);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tab:hover {
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.tabActive {
+  background-color: rgba(255, 255, 255, 1);
+  border-bottom-color: rgba(49, 100, 146, 1);
+  color: rgba(0, 51, 102, 1);
+  font-weight: 600;
+}
+
+.tabContent {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.section {
+  padding: 20px 24px 28px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(0, 51, 102, 1);
+  margin: 0;
+}
+
+.mainText {
+  font-size: 13px;
+  color: rgba(0, 51, 102, 1);
+  line-height: 1.65;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.mainTextPre {
+  font-size: 13px;
+  color: rgba(0, 51, 102, 1);
+  line-height: 1.7;
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.mainTextarea {
+  width: 100%;
+  border: 1px solid rgba(49, 100, 146, 0.4);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: rgba(0, 51, 102, 1);
+  background: rgba(245, 248, 252, 0.5);
+  font-family: inherit;
+  line-height: 1.65;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+.mainTextarea:focus {
+  border-color: rgba(49, 100, 146, 0.9);
+  background: white;
+}
+
+.claimsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.claimItem {
+  border: 1px solid rgba(49, 100, 146, 0.25);
+  border-radius: 6px;
+  padding: 12px 14px;
+  background-color: rgba(245, 248, 252, 0.6);
+}
+
+.claimHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.claimNumber {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(49, 100, 146, 1);
+}
+
+.claimActions {
+  display: flex;
+  gap: 4px;
+}
+
+.claimActionBtn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(49, 100, 146, 0.3);
+  border-radius: 5px;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+}
+
+.claimActionIcon {
+  width: 14px;
+  height: auto;
+  display: block;
+}
+
+.claimArrowDown {
+  transform: rotate(180deg);
+}
+.claimActionBtn:hover:not(:disabled) { background-color: rgba(229, 237, 245, 1); }
+.claimActionBtn:disabled { opacity: 0.35; cursor: default; }
+
+.claimDeleteBtn {
+  border-color: rgba(165, 55, 55, 0.35);
+}
+.claimDeleteBtn:hover:not(:disabled) { background-color: rgba(165, 55, 55, 0.07); }
+
+.claimText {
+  font-size: 13px;
+  color: rgba(0, 51, 102, 1);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.claimTextarea {
+  width: 100%;
+  border: 1px solid rgba(49, 100, 146, 0.35);
+  border-radius: 5px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: rgba(0, 51, 102, 1);
+  background: white;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+.claimTextarea:focus { border-color: rgba(49, 100, 146, 0.9); }
+
+.addClaimButton {
+  background-color: rgba(49, 100, 146, 1);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s ease;
+}
+.addClaimButton:hover { background-color: rgba(39, 80, 116, 1); }
+
+.addClaimIcon {
+  width: 12px;
+  height: 12px;
+  filter: brightness(0) invert(1);
+}
+
+.emptyHint {
+  font-size: 13px;
+  color: rgba(120, 150, 180, 1);
+  font-style: italic;
+  margin: 0 0 12px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.emptyStateIcon {
+  width: 48px;
+  height: auto;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.emptyStateText {
+  font-size: 14px;
+  color: rgba(100, 130, 160, 1);
+  max-width: 440px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.skeletonBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeletonLine {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(229, 237, 245, 0) 0%,
+    rgba(255, 255, 255, 0.8) 20%,
+    rgba(200, 210, 220, 0.6) 50%,
+    rgba(255, 255, 255, 0.8) 80%,
+    rgba(229, 237, 245, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

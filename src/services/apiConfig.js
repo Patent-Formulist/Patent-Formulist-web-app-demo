@@ -57,6 +57,12 @@ export const API_DRAWINGS_ENDPOINTS = {
   IMPORT: (uuid) => `${URL}/patents/${uuid}/drawings/import`,
   EXPORT: (uuid) => `${URL}/patents/${uuid}/drawings/export`,
 }
+
+export const API_APPLICATION_ENDPOINTS = {
+  APPLICATION: (uuid) => `${URL}/patents/${uuid}/application/`,
+  GENERATE: (uuid) => `${URL}/patents/${uuid}/application/generate`,
+  EXPORT: (uuid) => `${URL}/patents/${uuid}/application/export`,
+}
  
 export const API_PROFILE_ENDPOINTS = {
   PROFILE_GET: `${URL}/users/profile`,

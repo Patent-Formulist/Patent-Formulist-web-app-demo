@@ -58,6 +58,8 @@ export default function PatentAnalogLayout() {
     return location.pathname === `/workspace/patents/${id}${path}`
   }
 
+  const isAnySideTaskRunning = isAnalogsRunning || isCompareRunning || isPrototypeRunning
+
   const handleNavigate = (path) => {
     if (isAnalogsRunning) {
       showWarning('Дождитесь завершения поиска аналогов')
@@ -76,6 +78,16 @@ export default function PatentAnalogLayout() {
 
     if (path === '/prototype' && !isCompareCompleted) {
       showWarning('Сначала выполните сопоставление с аналогами')
+      return
+    }
+
+    if (path === '/schemes' && !isPrototypeCompleted) {
+      showWarning('Сначала выполните выявление прототипа')
+      return
+    }
+
+    if (path === '/application' && !isPrototypeCompleted) {
+      showWarning('Сначала завершите составление схем')
       return
     }
 
@@ -121,12 +133,22 @@ export default function PatentAnalogLayout() {
           Выявление прототипа
         </button>
 
+        {/* Составление схем */}
         <button
-          className={`${styles.actionButton} ${isActive('/schemes') ? styles.activeButton : ''} ${(!isPrototypeCompleted || isAnalogsRunning || isCompareRunning || isPrototypeRunning) ? styles.inactiveButton : ''}`}
+          className={`${styles.actionButton} ${isActive('/schemes') ? styles.activeButton : ''} ${(!isPrototypeCompleted || isAnySideTaskRunning) ? styles.inactiveButton : ''}`}
           onClick={() => handleNavigate('/schemes')}
-          disabled={!isPrototypeCompleted || isAnalogsRunning || isCompareRunning || isPrototypeRunning}
+          disabled={!isPrototypeCompleted || isAnySideTaskRunning}
         >
           Составление схем
+        </button>
+
+        {/* Подготовка заявки */}
+        <button
+          className={`${styles.actionButton} ${isActive('/application') ? styles.activeButton : ''} ${(!isPrototypeCompleted || isAnySideTaskRunning) ? styles.inactiveButton : ''}`}
+          onClick={() => handleNavigate('/application')}
+          disabled={!isPrototypeCompleted || isAnySideTaskRunning}
+        >
+          Подготовка заявки
         </button>
       </div>
       <Outlet />
