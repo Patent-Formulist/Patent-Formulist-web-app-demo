@@ -4,7 +4,7 @@ import { useToast } from '../../../contexts/ToastContext'
 import SaveResetWindow from '../../../components/SaveResetWindow/SaveResetWindow.jsx'
 import styles from '../styles/ApplicationPreparation.module.css'
 import authService from '../../../services/auth/authService.js'
-import { API_APPLICATION_ENDPOINTS as EP } from '../../../services/apiConfig'
+import { API_APPLICATION_ENDPOINTS } from '../../../services/apiConfig'
 import penIcon from '../../../resources/pen.svg'
 import applicationIcon from '../../../resources/application.svg'
 import arrowIcon from '../../../resources/arrow.svg'
@@ -44,11 +44,51 @@ const normalizeDescription = (text) => String(text ?? '')
   .replace(/\n{3,}/g, '\n\n')
   .trim()
 
-function ClaimItem({ claim, index, isEditing, onChange, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
+function SkeletonBlock({ lines = 6 }) {
   return (
-    <div className={styles.claimItem}>
+    <div className={styles.skeletonBlock}>
+      {Array.from({ length: lines }).map((_, i) => (
+        <div key={i} className={styles.skeletonLine} style={{ width: `${70 + Math.sin(i * 1.5) * 20}%` }} />
+      ))}
+    </div>
+  )
+}
+
+function ClaimItem({
+  claim, index, isEditing,
+  onChange, onDelete, onMoveUp, onMoveDown,
+  isFirst, isLast,
+  color, isIndependent, dependsOn,
+}) {
+  return (
+    <div
+      className={styles.claimItem}
+      style={color ? { borderLeftColor: color, borderLeftWidth: '3px' } : undefined}
+    >
       <div className={styles.claimHeader}>
-        <span className={styles.claimNumber}>{index + 1}.</span>
+        <div className={styles.claimNumberRow}>
+          <span
+            className={`${styles.claimNumber} ${isIndependent ? styles.claimNumberIndependent : styles.claimNumberDependent}`}
+            style={color ? { backgroundColor: color + '22', color } : undefined}
+          >
+            {index + 1}
+          </span>
+
+          {isIndependent && color && (
+            <span
+              className={styles.claimIndependentBadge}
+              style={{ color, borderColor: color + '66' }}
+            >
+              независимый
+            </span>
+          )}
+          {!isIndependent && dependsOn?.length > 0 && (
+            <span className={styles.claimDependsOnBadge}>
+              по п.&nbsp;{dependsOn.join(', ')}
+            </span>
+          )}
+        </div>
+
         {isEditing && (
           <div className={styles.claimActions}>
             <button
@@ -99,20 +139,6 @@ function ClaimItem({ claim, index, isEditing, onChange, onDelete, onMoveUp, onMo
   )
 }
 
-function SkeletonBlock({ lines = 6 }) {
-  return (
-    <div className={styles.skeletonBlock}>
-      {Array.from({ length: lines }).map((_, i) => (
-        <div
-          key={i}
-          className={styles.skeletonLine}
-          style={{ width: `${70 + Math.sin(i * 1.5) * 20}%` }}
-        />
-      ))}
-    </div>
-  )
-}
-
 export default function Application() {
   const { id } = useParams()
   const { showSuccess, showWarning, showError } = useToast()
@@ -128,6 +154,11 @@ export default function Application() {
   const [claims, setClaims] = useState([])
   const [description, setDescription] = useState('')
 
+  const [graphData, setGraphData] = useState(null)
+  const [graphLoading, setGraphLoading] = useState(false)
+  const [editingGraph, setEditingGraph] = useState([])
+  const [selectedParent, setSelectedParent] = useState('')
+
   const pollingRef = useRef(null)
   const pollingStartRef = useRef(null)
 
@@ -137,14 +168,33 @@ export default function Application() {
     setDescription(normalizeDescription(d.description))
   }, [])
 
+  const fetchClaimsGraph = useCallback(async () => {
+    setGraphLoading(true)
+    try {
+      const response = await fetch(API_APPLICATION_ENDPOINTS.CLAIMS_GRAPH(id), {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authService.getAccessToken()}` },
+      })
+      if (!response.ok) {
+        setGraphData(null)
+        setEditingGraph([])
+        return
+      }
+      const graph = await response.json()
+      setGraphData(graph)
+      setEditingGraph(graph.claims.map((claim) => ({ ...claim })))
+    } catch {
+      setGraphData(null)
+    } finally {
+      setGraphLoading(false)
+    }
+  }, [id])
+
   const fetchApplication = useCallback(async () => {
     try {
-      const response = await fetch(EP.APPLICATION(id), {
+      const response = await fetch(API_APPLICATION_ENDPOINTS.APPLICATION(id), {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authService.getAccessToken()}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authService.getAccessToken()}` },
       })
       if (!response.ok) return null
       const result = await response.json()
@@ -159,11 +209,14 @@ export default function Application() {
   useEffect(() => {
     const init = async () => {
       setLoading(true)
-      await fetchApplication()
+      const result = await fetchApplication()
       setLoading(false)
+      if (result?.claims?.length) {
+        fetchClaimsGraph()
+      }
     }
     init()
-  }, [fetchApplication])
+  }, [fetchApplication, fetchClaimsGraph])
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -186,9 +239,11 @@ export default function Application() {
         stopPolling()
         setGenerating(false)
         showSuccess('Документы успешно сгенерированы')
+        setGraphData(null)
+        fetchClaimsGraph()
       }
     }, POLLING_INTERVAL)
-  }, [fetchApplication, stopPolling, showSuccess, showError])
+  }, [fetchApplication, fetchClaimsGraph, stopPolling, showSuccess, showError])
 
   useEffect(() => () => stopPolling(), [stopPolling])
 
@@ -210,12 +265,9 @@ export default function Application() {
     }
     setGenerating(true)
     try {
-      const response = await fetch(EP.GENERATE(id), {
+      const response = await fetch(API_APPLICATION_ENDPOINTS.GENERATE(id), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authService.getAccessToken()}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authService.getAccessToken()}` },
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -229,7 +281,12 @@ export default function Application() {
   }
 
   const beginEdit = () => {
-    snapshotRef.current = { abstract, claims: [...claims], description }
+    snapshotRef.current = {
+      abstract,
+      claims: [...claims],
+      description,
+      editingGraph: editingGraph.map((claim) => ({ ...claim })),
+    }
     setIsEditing(true)
   }
 
@@ -245,12 +302,9 @@ export default function Application() {
     setIsEditing(false)
     setSaveModalOpen(false)
     try {
-      const response = await fetch(EP.APPLICATION(id), {
+      const response = await fetch(API_APPLICATION_ENDPOINTS.APPLICATION(id), {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authService.getAccessToken()}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authService.getAccessToken()}` },
         body: JSON.stringify({
           abstract: normalizeAbstract(abstract),
           claims: normalizeClaims(claims),
@@ -265,6 +319,8 @@ export default function Application() {
       setData(result)
       syncFromData(result)
       showSuccess('Изменения сохранены')
+      setGraphData(null)
+      fetchClaimsGraph()
     } catch (err) {
       showError(err.message || 'Ошибка сохранения')
       const snap = snapshotRef.current
@@ -272,6 +328,7 @@ export default function Application() {
         setAbstract(snap.abstract)
         setClaims(snap.claims)
         setDescription(snap.description)
+        setEditingGraph(snap.editingGraph)
       }
       setIsEditing(true)
     }
@@ -283,6 +340,7 @@ export default function Application() {
       setAbstract(snap.abstract)
       setClaims(snap.claims)
       setDescription(snap.description)
+      setEditingGraph(snap.editingGraph)
     }
     setIsEditing(false)
     setSaveModalOpen(false)
@@ -292,11 +350,9 @@ export default function Application() {
   const handleExport = async () => {
     setExporting(true)
     try {
-      const response = await fetch(EP.EXPORT(id), {
+      const response = await fetch(API_APPLICATION_ENDPOINTS.EXPORT(id), {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${authService.getAccessToken()}`,
-        },
+        headers: { Authorization: `Bearer ${authService.getAccessToken()}` },
       })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -320,23 +376,80 @@ export default function Application() {
   const addClaim = () => {
     if (!isEditing) beginEdit()
     setClaims((prev) => [...prev, ''])
+    setEditingGraph((prev) => [
+      ...prev,
+      {
+        number: prev.length + 1,
+        text: '',
+        is_independent: true,
+        depends_on: [],
+        family: prev.length + 1,
+        color: null,
+      },
+    ])
   }
 
-  const updateClaim = (index, value) => {
-    setClaims((prev) => prev.map((c, i) => (i === index ? value : c)))
+  const addSubClaim = () => {
+    if (!selectedParent) return
+
+    const parent = editingGraph.find((claim) => claim.number === selectedParent)
+    if (!parent) return
+
+    let insertIndex = parent.number - 1
+    editingGraph.forEach((claim, index) => {
+      if (claim.number === parent.number || claim.depends_on.includes(parent.number)) {
+        insertIndex = index
+      }
+    })
+
+    const prefillText = `по п. ${parent.number}, отличающийся тем, что `
+
+    setClaims((prev) => {
+      const next = [...prev]
+      next.splice(insertIndex + 1, 0, prefillText)
+      return next
+    })
+
+    setEditingGraph((prev) => {
+      const next = prev.map((claim) => ({ ...claim }))
+      next.splice(insertIndex + 1, 0, {
+        number: insertIndex + 2,
+        text: prefillText,
+        is_independent: false,
+        depends_on: [parent.number],
+        family: parent.family,
+        color: parent.color,
+      })
+      return next.map((claim, idx) => ({ ...claim, number: idx + 1 }))
+    })
+
+    setSelectedParent('')
   }
+
+  const updateClaim = (index, value) => setClaims((prev) => prev.map((c, i) => (i === index ? value : c)))
 
   const deleteClaim = (index) => {
     setClaims((prev) => prev.filter((_, i) => i !== index))
+    setEditingGraph((prev) =>
+      prev
+        .filter((_, i) => i !== index)
+        .map((claim, idx) => ({ ...claim, number: idx + 1 }))
+    )
   }
 
   const moveClaim = (index, direction) => {
+    const target = index + direction
     setClaims((prev) => {
       const next = [...prev]
-      const target = index + direction
       if (target < 0 || target >= next.length) return prev;
       [next[index], next[target]] = [next[target], next[index]]
       return next
+    })
+    setEditingGraph((prev) => {
+      if (target < 0 || target >= prev.length) return prev
+      const next = prev.map((claim) => ({ ...claim }));
+      [next[index], next[target]] = [next[target], next[index]]
+      return next.map((claim, idx) => ({ ...claim, number: idx + 1 }))
     })
   }
 
@@ -447,16 +560,44 @@ export default function Application() {
                 <div className={styles.sectionHeader}>
                   <h3 className={styles.sectionTitle}>Формула изобретения</h3>
                   {isEditing && (
-                    <button
-                      type="button"
-                      className={styles.addClaimButton}
-                      onClick={addClaim}
-                    >
-                      <img src={plusIcon} alt="" className={styles.addClaimIcon} aria-hidden="true" />
-                      Добавить пункт
-                    </button>
+                    <div className={styles.addClaimButtons}>
+                      <button
+                        type="button"
+                        className={styles.addClaimButton}
+                        onClick={addClaim}
+                      >
+                        <img src={plusIcon} alt="" className={styles.addClaimIcon} aria-hidden="true" />
+                        Добавить пункт
+                      </button>
+
+                      <select
+                        className={styles.subClaimSelect}
+                        value={selectedParent}
+                        onChange={(e) => setSelectedParent(Number(e.target.value))}
+                      >
+                        <option value="">Выберите пункт</option>
+                        {editingGraph
+                          .filter((claim) => claim.is_independent)
+                          .map((claim) => (
+                            <option key={claim.number} value={claim.number}>
+                              Пункт {claim.number}
+                            </option>
+                          ))}
+                      </select>
+
+                      <button
+                        type="button"
+                        className={styles.addClaimButton}
+                        disabled={!selectedParent}
+                        onClick={addSubClaim}
+                      >
+                        <img src={plusIcon} alt="" className={styles.addClaimIcon} aria-hidden="true" />
+                        Добавить подпункт
+                      </button>
+                    </div>
                   )}
                 </div>
+
                 {loading || generating ? (
                   <div className={styles.claimsList}>
                     {[1, 2, 3].map((i) => (
@@ -469,20 +610,26 @@ export default function Application() {
                   <p className={styles.emptyHint}>Пункты формулы отсутствуют</p>
                 ) : (
                   <div className={styles.claimsList}>
-                    {claims.map((claim, index) => (
-                      <ClaimItem
-                        key={index}
-                        claim={claim}
-                        index={index}
-                        isEditing={isEditing}
-                        onChange={(val) => updateClaim(index, val)}
-                        onDelete={() => deleteClaim(index)}
-                        onMoveUp={() => moveClaim(index, -1)}
-                        onMoveDown={() => moveClaim(index, 1)}
-                        isFirst={index === 0}
-                        isLast={index === claims.length - 1}
-                      />
-                    ))}
+                    {claims.map((claim, index) => {
+                      const graphClaim = editingGraph.find((c) => c.number === index + 1)
+                      return (
+                        <ClaimItem
+                          key={index}
+                          claim={claim}
+                          index={index}
+                          isEditing={isEditing}
+                          onChange={(val) => updateClaim(index, val)}
+                          onDelete={() => deleteClaim(index)}
+                          onMoveUp={() => moveClaim(index, -1)}
+                          onMoveDown={() => moveClaim(index, 1)}
+                          isFirst={index === 0}
+                          isLast={index === claims.length - 1}
+                          color={graphClaim?.color ?? null}
+                          isIndependent={graphClaim ? graphClaim.is_independent : true}
+                          dependsOn={graphClaim?.depends_on ?? []}
+                        />
+                      )
+                    })}
                   </div>
                 )}
               </div>

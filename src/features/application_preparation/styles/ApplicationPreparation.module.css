@@ -327,6 +327,13 @@
 }
 .claimTextarea:focus { border-color: rgba(49, 100, 146, 0.9); }
 
+.addClaimButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .addClaimButton {
   background-color: rgba(49, 100, 146, 1);
   color: white;
@@ -342,6 +349,30 @@
   transition: background-color 0.2s ease;
 }
 .addClaimButton:hover { background-color: rgba(39, 80, 116, 1); }
+
+.subClaimSelect {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(49, 100, 146, 1);
+  background: rgba(255, 255, 255, 1);
+  border: 1px solid rgba(49, 100, 146, 0.5);
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+  max-width: 160px;
+}
+
+.subClaimSelect:focus {
+  border-color: rgba(49, 100, 146, 1);
+}
+
+.addClaimButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .addClaimIcon {
   width: 12px;
@@ -401,3 +432,64 @@
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+.claimNumberRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 4px;
+}
+
+.claimNumberIndependent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.claimNumberDependent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.claimIndependentBadge {
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 1px 7px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.claimDependsOnBadge {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(110, 135, 160, 1);
+  background: rgba(229, 237, 245, 0.8);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+.subClaimSelect {
+  border: 1px solid rgba(49, 100, 146, 0.3);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: rgba(0, 51, 102, 1);
+  background: white;
+}
+

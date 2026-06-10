@@ -62,6 +62,7 @@ export const API_APPLICATION_ENDPOINTS = {
   APPLICATION: (uuid) => `${URL}/patents/${uuid}/application/`,
   GENERATE: (uuid) => `${URL}/patents/${uuid}/application/generate`,
   EXPORT: (uuid) => `${URL}/patents/${uuid}/application/export`,
+  CLAIMS_GRAPH: (id) => `/api/v2/patents/${id}/application/claims-graph`,
 }
  
 export const API_PROFILE_ENDPOINTS = {
