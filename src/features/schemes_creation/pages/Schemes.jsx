@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { useToast } from '../../../contexts/ToastContext'
+import { useReference } from '../../../contexts/ReferenceContext'
+import { TASK_STATUS } from '../../../services/reference/referenceService'
 import SaveResetWindow from '../../../components/SaveResetWindow/SaveResetWindow.jsx'
 import styles from '../styles/Schemes.module.css'
 import authService from '../../../services/auth/authService.js'
@@ -183,6 +185,7 @@ function useEditSession(clone) {
 
 export default function Schemes() {
   const { id } = useParams()
+  const { updateSchemeTask } = useReference()
   const { showSuccess, showWarning, showError } = useToast()
 
   const [elements, setElements] = useState([])
@@ -451,7 +454,16 @@ export default function Schemes() {
           }),
         })),
       ])
-      setFigures(await fetchFigures(elements))
+      const freshFigures = await fetchFigures(elements)
+
+      setFigures(freshFigures)
+
+      updateSchemeTask(id, {
+        status: TASK_STATUS.SUCCESS,
+        data: freshFigures,
+        error: null,
+      })
+
       showSuccess('Изменения сохранены')
     } catch (err) {
       showError(err.message || 'Ошибка сохранения')

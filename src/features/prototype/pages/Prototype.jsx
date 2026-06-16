@@ -175,8 +175,9 @@ export default function Prototype() {
           const data = JSON.parse(savedData)
           // Данные могут быть обёрнуты в поле analogs или быть сразу объектом
           const prototypeData = data.analogs || data
+          const hasRealData = Array.isArray(prototypeData?.rows) && prototypeData.rows.length > 0
 
-          if (updatePrototypeTask) {
+          if (updatePrototypeTask && hasRealData) {
             updatePrototypeTask(id, {
               status: TASK_STATUS.SUCCESS,
               data: prototypeData,
@@ -208,11 +209,11 @@ export default function Prototype() {
         if (response.ok) {
           const data = await response.json()
           const prototypeData = data[id] || data.analogs || data
+          const hasRealData = Array.isArray(prototypeData?.rows) && prototypeData.rows.length > 0
 
-          // Сохраняем в localStorage для будущих загрузок
-          localStorage.setItem(`prototype_${id}`, JSON.stringify(prototypeData))
-
-          if (updatePrototypeTask) {
+          if (updatePrototypeTask && hasRealData) {
+            // Сохраняем в localStorage для будущих загрузок
+            localStorage.setItem(`prototype_${id}`, JSON.stringify(prototypeData))
             updatePrototypeTask(id, {
               status: TASK_STATUS.SUCCESS,
               data: prototypeData,
@@ -641,4 +642,3 @@ export default function Prototype() {
     </>
   )
 }
-

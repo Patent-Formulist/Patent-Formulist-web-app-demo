@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useToast } from '../../../contexts/ToastContext'
+import { useReference } from '../../../contexts/ReferenceContext'
+import { TASK_STATUS } from '../../../services/reference/referenceService'
 import SaveResetWindow from '../../../components/SaveResetWindow/SaveResetWindow.jsx'
 import styles from '../styles/ApplicationPreparation.module.css'
 import authService from '../../../services/auth/authService.js'
@@ -141,6 +143,7 @@ function ClaimItem({
 
 export default function Application() {
   const { id } = useParams()
+  const { updateApplicationTask } = useReference()
   const { showSuccess, showWarning, showError } = useToast()
   const [activeTab, setActiveTab] = useState('abstract')
   const [data, setData] = useState(null)
@@ -238,6 +241,13 @@ export default function Application() {
       if (result && result.abstract && result.claims?.length && result.description) {
         stopPolling()
         setGenerating(false)
+
+        updateApplicationTask(id, {
+          status: TASK_STATUS.SUCCESS,
+          data: result,
+          error: null,
+        })
+
         showSuccess('Документы успешно сгенерированы')
         setGraphData(null)
         fetchClaimsGraph()
@@ -264,6 +274,11 @@ export default function Application() {
       return
     }
     setGenerating(true)
+    updateApplicationTask(id, {
+      status: TASK_STATUS.RUNNING,
+      data: null,
+      error: null,
+    })
     try {
       const response = await fetch(API_APPLICATION_ENDPOINTS.GENERATE(id), {
         method: 'POST',

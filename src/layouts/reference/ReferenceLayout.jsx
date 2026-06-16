@@ -11,7 +11,7 @@ export default function PatentAnalogLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { showWarning } = useToast()
-  const { getTask, getCompareTask, getPrototypeTask } = useReference()
+  const { getTask, getCompareTask, getPrototypeTask, getSchemeTask, getApplicationTask} = useReference()
   
   const [patent, setPatent] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -20,10 +20,14 @@ export default function PatentAnalogLayout() {
   const analogTask = getTask(id)
   const compareTask = getCompareTask(id)
   const prototypeTask = getPrototypeTask(id)
+  const schemeTask = getSchemeTask(id)
+  const applicationTask = getApplicationTask(id)
   
   const isAnalogsCompleted = analogTask?.status === TASK_STATUS.SUCCESS && analogTask?.data
   const isCompareCompleted = compareTask?.status === TASK_STATUS.SUCCESS && compareTask?.data
   const isPrototypeCompleted = prototypeTask?.status === TASK_STATUS.SUCCESS && prototypeTask?.data
+  const isSchemesCompleted = schemeTask?.status === TASK_STATUS.SUCCESS && schemeTask?.data
+  const isApplicationCompleted = applicationTask?.status === TASK_STATUS.SUCCESS && applicationTask?.data
   
   const isAnalogsRunning = analogTask?.status === TASK_STATUS.RUNNING
   const isCompareRunning = compareTask?.status === TASK_STATUS.RUNNING
@@ -135,7 +139,7 @@ export default function PatentAnalogLayout() {
 
         {/* Составление схем */}
         <button
-          className={`${styles.actionButton} ${isActive('/schemes') ? styles.activeButton : ''} ${(!isPrototypeCompleted || isAnySideTaskRunning) ? styles.inactiveButton : ''}`}
+          className={`${styles.actionButton} ${isActive('/schemes') ? styles.activeButton : ''} ${(!isPrototypeCompleted || isAnySideTaskRunning) ? styles.inactiveButton : ''} ${isSchemesCompleted ? styles.completed : ''}`}
           onClick={() => handleNavigate('/schemes')}
           disabled={!isPrototypeCompleted || isAnySideTaskRunning}
         >
@@ -144,7 +148,7 @@ export default function PatentAnalogLayout() {
 
         {/* Подготовка заявки */}
         <button
-          className={`${styles.actionButton} ${isActive('/application') ? styles.activeButton : ''} ${(!isPrototypeCompleted || isAnySideTaskRunning) ? styles.inactiveButton : ''}`}
+          className={`${styles.actionButton} ${isActive('/application') ? styles.activeButton : ''} ${(!isPrototypeCompleted || isAnySideTaskRunning) ? styles.inactiveButton : ''} ${isApplicationCompleted ? styles.completed : ''}`}
           onClick={() => handleNavigate('/application')}
           disabled={!isPrototypeCompleted || isAnySideTaskRunning}
         >
