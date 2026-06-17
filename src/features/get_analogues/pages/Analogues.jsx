@@ -73,6 +73,7 @@ export default function Analogues() {
   const [rowHeights, setRowHeights] = useState([])
   const [headerHeight, setHeaderHeight] = useState(0)
   const [saveModalVisible, setSaveModalVisible] = useState(false)
+  const [preEditSnapshot, setPreEditSnapshot] = useState(null)
   const tableDataRef = useRef([])
   const activeEditCellRef = useRef(null)
   const rowRefs = useRef([])
@@ -262,7 +263,7 @@ export default function Analogues() {
       setSaveModalVisible(true)
       return
     }
-
+    setPreEditSnapshot(cloneSnapshot(tableData))
     setIsEditMode(true)
   }
 
@@ -953,11 +954,11 @@ export default function Analogues() {
         onSave={handleSaveEdits}
 
         onReset={() => {
-          setTableData(Object.values(analogsData))
-          setTableData(Object.values(analogsData));
+          setTableData(preEditSnapshot ?? cloneSnapshot(tableData))
           setIsEditMode(false)
           setEditHistory([])
           setRedoHistory([])
+          setPreEditSnapshot(null)
           setSaveModalVisible(false)
         }}
       />

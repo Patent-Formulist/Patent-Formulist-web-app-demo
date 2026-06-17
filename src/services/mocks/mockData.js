@@ -281,28 +281,6 @@ export const MOCK_AI_MODELS = [
   'Mistral Large'
 ]
 
-export const MOCK_ELEMENTS_DATA = [
-  { id: 'el-1', description: 'Резистивные датчики влажности', position: 0 },
-  { id: 'el-2', description: 'Микроконтроллер управления', position: 1 },
-  { id: 'el-3', description: 'Радиомодуль передачи данных', position: 2 },
-  { id: 'el-4', description: 'Автономный источник питания', position: 3 },
-  { id: 'el-5', description: 'Блок аналого-цифрового преобразования', position: 4 },
-  { id: 'el-6', description: 'Антенна радиосвязи', position: 5 },
-]
-
-export const MOCK_FIGURES_DATA = [
-  {
-    id: 'fig-1',
-    description: 'Схема датчика для получения влажности с автономным питанием и передачей информации по радиосвязи — вид сверху.',
-    element_ids: ['el-1', 'el-2', 'el-3', 'el-4'],
-  },
-  {
-    id: 'fig-2',
-    description: 'Принципиальная электрическая схема блока аналого-цифрового преобразования и антенного модуля — вид сбоку.',
-    element_ids: ['el-5', 'el-6', 'el-2'],
-  },
-]
-
 let mockPatentIdCounter = Object.keys(MOCK_PATENTS).length
 let mockTaskIdCounter = 0
 

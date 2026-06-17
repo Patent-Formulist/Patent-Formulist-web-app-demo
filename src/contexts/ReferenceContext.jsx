@@ -8,6 +8,8 @@ const ReferenceContext = createContext()
 const STORAGE_KEY_ANALOGS = 'analog_tasks'
 const STORAGE_KEY_COMPARE = 'compare_tasks'
 const STORAGE_KEY_PROTOTYPE = 'prototype_tasks'
+const STORAGE_KEY_SCHEMES = 'scheme_tasks'
+const STORAGE_KEY_APPLICATION = 'application_tasks'
 
 export function ReferenceProvider({ children }) {
   const [analogTasks, setAnalogTasks] = useState(() => {
@@ -22,6 +24,16 @@ export function ReferenceProvider({ children }) {
 
   const [prototypeTasks, setPrototypeTasks] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY_PROTOTYPE)
+    return saved ? JSON.parse(saved) : {}
+  })
+
+  const [schemeTasks, setSchemeTasks] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_SCHEMES)
+    return saved ? JSON.parse(saved) : {}
+  })
+
+  const [applicationTasks, setApplicationTasks] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_APPLICATION)
     return saved ? JSON.parse(saved) : {}
   })
 
@@ -40,6 +52,15 @@ export function ReferenceProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_PROTOTYPE, JSON.stringify(prototypeTasks))
   }, [prototypeTasks])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_SCHEMES, JSON.stringify(schemeTasks))
+  }, [schemeTasks])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_APPLICATION, JSON.stringify(applicationTasks)
+    )
+  }, [applicationTasks])
 
   useEffect(() => {
     Object.entries(analogTasks).forEach(([patentId, task]) => {
@@ -397,6 +418,16 @@ export function ReferenceProvider({ children }) {
     return prototypeTasks[patentId]
   }, [prototypeTasks])
 
+  const getSchemeTask = useCallback(
+    (patentId) => schemeTasks[patentId],
+    [schemeTasks]
+  )
+
+  const getApplicationTask = useCallback(
+    (patentId) => applicationTasks[patentId],
+    [applicationTasks]
+  )
+
   const clearAnalogTask = useCallback((patentId) => {
     if (analogIntervalsRef.current[patentId]) {
       clearInterval(analogIntervalsRef.current[patentId])
@@ -469,6 +500,26 @@ export function ReferenceProvider({ children }) {
     }))
   }, [])
 
+  const updateSchemeTask = useCallback((patentId, updates) => {
+    setSchemeTasks(prev => ({
+      ...prev,
+      [patentId]: {
+        ...prev[patentId],
+        ...updates
+      }
+    }))
+  }, [])
+
+  const updateApplicationTask = useCallback((patentId, updates) => {
+    setApplicationTasks(prev => ({
+      ...prev,
+      [patentId]: {
+        ...prev[patentId],
+        ...updates
+      }
+    }))
+  }, [])
+
   return (
     <ReferenceContext.Provider value={{
       startTask: startAnalogTask,
@@ -486,7 +537,13 @@ export function ReferenceProvider({ children }) {
       clearTaskForPatent,
       analogTasks,
       compareTasks,
-      prototypeTasks
+      prototypeTasks,
+      getSchemeTask,
+      updateSchemeTask,
+      getApplicationTask,
+      updateApplicationTask,
+      schemeTasks,
+      applicationTasks,
     }}>
       {children}
     </ReferenceContext.Provider>
