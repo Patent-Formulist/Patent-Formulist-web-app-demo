@@ -14,6 +14,15 @@ import deleteIcon from '../../../resources/red-bin.svg'
 
 const INTRO_PHRASE = /^(состоит из[:,]?|содержит[:,]?|включает[:,]?)\s*/i
 const INTRO_PHRASE_ONLY = /^(состоит из[:,]?|содержит[:,]?|включает[:,]?)$/i
+
+// Обороты, которыми в патентных описаниях (часто одним предложением через
+// запятые) вводится новый признак/узел. По ним дробим, иначе run-on
+// предложение без точек даёт один элемент.
+// DROP — чистые связки, их выкидываем; KEEP — относительный оборот «на котором»,
+// сохраняем как начало нового пункта, чтобы он не повис в воздухе.
+const CONNECTIVE_DROP = /,\s*(?:при\s+этом|при\s+том|причём|причем|а\s+также)\s+/gi
+const CONNECTIVE_KEEP = /,\s*(на\s+котор(?:ом|ой|ых))\s+/gi
+const SPLIT_MARK = String.fromCharCode(1)
 const TEMP_ID = { ELEMENT: 'el-new-', FIGURE: 'fig-new-' }
 
 const apiHeaders = () => ({
@@ -75,6 +84,8 @@ const parseImportedElements = (text) => {
     .replace(/\s+/g, ' ')
     .replace(INTRO_PHRASE, '')
     .replace(/([.;])\s*/g, '$1 ')
+    .replace(CONNECTIVE_DROP, ` ${SPLIT_MARK}`)
+    .replace(CONNECTIVE_KEEP, ` ${SPLIT_MARK}$1 `)
     .replace(/\s+/g, ' ')
     .trim()
 
@@ -83,11 +94,14 @@ const parseImportedElements = (text) => {
   const words = normalized.split(' ')
 
   for (let i = 0; i < words.length; i++) {
-    const word = words[i]
+    let word = words[i]
+    const forcedBreak = word.startsWith(SPLIT_MARK)
+    if (forcedBreak) word = word.slice(SPLIT_MARK.length)
     const prevWord = words[i - 1] ?? ''
     const isFirstWord = current.trim() === ''
     const splitHere = !isFirstWord && (
-      prevWord.endsWith(';')
+      forcedBreak
+      || prevWord.endsWith(';')
       || prevWord.endsWith('.')
       || (word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase())
     )
