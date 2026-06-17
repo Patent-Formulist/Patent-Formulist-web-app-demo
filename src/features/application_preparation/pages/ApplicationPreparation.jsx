@@ -269,7 +269,7 @@ export default function Application() {
 
   const handleGenerate = async () => {
     if (generating) return
-    if (data && !data.is_outdated) {
+    if (hasData && !isOutdated) {
       showWarning('Документы уже сгенерированы. Данные актуальны.')
       return
     }
