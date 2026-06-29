@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import { useToast } from '../../../contexts/ToastContext'
 import { useReference } from '../../../contexts/ReferenceContext'
@@ -159,6 +160,9 @@ export default function Schemes() {
   const [figuresLoaded, setFiguresLoaded] = useState(false)
   const figuresEdit = useEditSession(cloneFigures)
 
+  // Какую генерацию подтверждаем при повторном нажатии: 'elements' | 'figures' | null
+  const [confirmModal, setConfirmModal] = useState(null)
+
   const fetchElements = useCallback(async () => {
     const data = await apiFetch(API_DRAWINGS_ENDPOINTS.ELEMENTS(id))
     return (data.elements ?? []).map(normalizeElement)
@@ -219,11 +223,8 @@ export default function Schemes() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [elementsEdit.isEditing, elementsEdit.requestClose, figuresEdit.isEditing, figuresEdit.requestClose])
 
-  const handleGenerateElements = async () => {
-    if (elementsLoaded) {
-      showWarning('Список уже составлен')
-      return
-    }
+  const runGenerateElements = async () => {
+    elementsEdit.exitEdit()
     setElementsLoading(true)
     try {
       const data = await apiFetch(API_DRAWINGS_ENDPOINTS.ELEMENTS_GENERATE(id), {
@@ -236,12 +237,25 @@ export default function Schemes() {
       }
       setElements(elems)
       setElementsLoaded(true)
+      // Номера элементов изменились — старые фигуры больше не актуальны.
+      setFigures([])
+      setFiguresLoaded(false)
+      figuresEdit.exitEdit()
       showSuccess('Список составных частей сформирован')
     } catch (err) {
       showError(err.message || 'Ошибка генерации')
     } finally {
       setElementsLoading(false)
     }
+  }
+
+  const handleGenerateElements = () => {
+    if (elementsLoading) return
+    if (elementsLoaded) {
+      setConfirmModal('elements')
+      return
+    }
+    runGenerateElements()
   }
 
   const handleSaveElements = async () => {
@@ -329,15 +343,8 @@ export default function Schemes() {
     })
   }
 
-  const handleComposeFigures = async () => {
-    if (figuresLoaded) {
-      showWarning('Фигуры уже составлены')
-      return
-    }
-    if (!elementsLoaded) {
-      showWarning('Сначала составьте список частей изобретения')
-      return
-    }
+  const runComposeFigures = async () => {
+    figuresEdit.exitEdit()
     setFiguresLoading(true)
     try {
       const data = await apiFetch(API_DRAWINGS_ENDPOINTS.FIGURES_GENERATE(id), {
@@ -353,6 +360,28 @@ export default function Schemes() {
       setFiguresLoading(false)
     }
   }
+
+  const handleComposeFigures = () => {
+    if (figuresLoading) return
+    if (!elementsLoaded) {
+      showWarning('Сначала составьте список частей изобретения')
+      return
+    }
+    if (figuresLoaded) {
+      setConfirmModal('figures')
+      return
+    }
+    runComposeFigures()
+  }
+
+  const confirmRegenerate = () => {
+    const target = confirmModal
+    setConfirmModal(null)
+    if (target === 'elements') runGenerateElements()
+    else if (target === 'figures') runComposeFigures()
+  }
+
+  const cancelRegenerate = () => setConfirmModal(null)
 
   const beginFiguresEdit = () => {
     if (!figuresEdit.isEditing) figuresEdit.beginEdit(figures)
@@ -453,7 +482,7 @@ export default function Schemes() {
       styles.actionButton,
       active && styles.tableButtonActive,
       loading && styles.loading,
-      completed && styles.completed,
+      completed && !loading && styles.completed,
     ].filter(Boolean).join(' ')
 
   return (
@@ -738,6 +767,37 @@ export default function Schemes() {
             Экспорт в XLSX
           </button>
         </div>
+      )}
+
+      {confirmModal && createPortal(
+        <div className={styles.modalOverlay} onClick={cancelRegenerate}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>
+              {confirmModal === 'elements'
+                ? 'Составить список заново?'
+                : 'Составить фигуры заново?'}
+            </h3>
+            <p className={styles.modalText}>
+              {confirmModal === 'elements'
+                ? 'Текущий список составных частей будет заменён новым результатом генерации.'
+                : 'Текущее распределение элементов по фигурам будет заменено новым результатом генерации.'}
+            </p>
+            <p className={styles.modalWarning}>
+              {confirmModal === 'elements'
+                ? 'Ручные правки списка и составленные фигуры будут сброшены.'
+                : 'Ручные правки фигур будут потеряны.'}
+            </p>
+            <div className={styles.modalButtons}>
+              <button className={styles.modalCancelButton} onClick={cancelRegenerate} type="button">
+                Отмена
+              </button>
+              <button className={styles.modalConfirmButton} onClick={confirmRegenerate} type="button">
+                Перегенерировать
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       <SaveResetWindow

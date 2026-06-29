@@ -418,3 +418,112 @@
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* Модалка подтверждения перегенерации (список / фигуры) */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+  position: relative;
+  z-index: 10001;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.modalTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(0, 40, 80, 1);
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.modalText {
+  font-size: 15px;
+  color: rgba(0, 51, 102, 1);
+  margin: 0 0 12px 0;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.modalWarning {
+  font-size: 14px;
+  color: rgba(165, 55, 55, 1);
+  font-weight: 600;
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+.modalButtons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modalCancelButton {
+  padding: 12px 32px;
+  background-color: rgba(49, 100, 146, 1);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.modalCancelButton:hover {
+  background-color: rgba(35, 75, 122, 1);
+  transform: translateY(-1px);
+}
+
+.modalCancelButton:active {
+  transform: translateY(0);
+}
+
+.modalConfirmButton {
+  padding: 12px 32px;
+  background-color: rgba(165, 55, 55, 1);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.modalConfirmButton:hover {
+  background-color: rgba(140, 45, 45, 1);
+  transform: translateY(-1px);
+}
+
+.modalConfirmButton:active {
+  transform: translateY(0);
+}
