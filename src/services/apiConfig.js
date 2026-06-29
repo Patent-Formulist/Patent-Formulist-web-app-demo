@@ -53,8 +53,10 @@ export const API_DRAWINGS_ENDPOINTS = {
   ELEMENTS: (uuid) => `${URL}/patents/${uuid}/drawings/elements`,
   ELEMENT: (uuid, elId) => `${URL}/patents/${uuid}/drawings/elements/${elId}`,
   ELEMENTS_REORDER: (uuid) => `${URL}/patents/${uuid}/drawings/elements/reorder`,
+  ELEMENTS_GENERATE: (uuid) => `${URL}/patents/${uuid}/drawings/elements/generate`,
   FIGURES: (uuid) => `${URL}/patents/${uuid}/drawings/figures`,
   FIGURE: (uuid, figId) => `${URL}/patents/${uuid}/drawings/figures/${figId}`,
+  FIGURES_GENERATE: (uuid) => `${URL}/patents/${uuid}/drawings/figures/generate`,
   IMPORT: (uuid) => `${URL}/patents/${uuid}/drawings/import`,
   EXPORT: (uuid) => `${URL}/patents/${uuid}/drawings/export`,
 }

@@ -6,23 +6,11 @@ import { TASK_STATUS } from '../../../services/reference/referenceService'
 import SaveResetWindow from '../../../components/SaveResetWindow/SaveResetWindow.jsx'
 import styles from '../styles/Schemes.module.css'
 import authService from '../../../services/auth/authService.js'
-import patentService from '../../../services/patent/patentService.js'
 import { API_DRAWINGS_ENDPOINTS } from '../../../services/apiConfig'
 import penIcon from '../../../resources/pen.svg'
 import plusIcon from '../../../resources/plus.svg'
 import deleteIcon from '../../../resources/red-bin.svg'
 
-const INTRO_PHRASE = /^(состоит из[:,]?|содержит[:,]?|включает[:,]?)\s*/i
-const INTRO_PHRASE_ONLY = /^(состоит из[:,]?|содержит[:,]?|включает[:,]?)$/i
-
-// Обороты, которыми в патентных описаниях (часто одним предложением через
-// запятые) вводится новый признак/узел. По ним дробим, иначе run-on
-// предложение без точек даёт один элемент.
-// DROP — чистые связки, их выкидываем; KEEP — относительный оборот «на котором»,
-// сохраняем как начало нового пункта, чтобы он не повис в воздухе.
-const CONNECTIVE_DROP = /,\s*(?:при\s+этом|при\s+том|причём|причем|а\s+также)\s+/gi
-const CONNECTIVE_KEEP = /,\s*(на\s+котор(?:ом|ой|ых))\s+/gi
-const SPLIT_MARK = String.fromCharCode(1)
 const TEMP_ID = { ELEMENT: 'el-new-', FIGURE: 'fig-new-' }
 
 const apiHeaders = () => ({
@@ -76,52 +64,6 @@ const normalizeElement = (el) => ({
   id: el.id,
   description: el.description ?? '',
 })
-
-const capitalizeFirst = (str) => str.charAt(0).toUpperCase() + str.slice(1).trimEnd()
-
-const parseImportedElements = (text) => {
-  const normalized = text
-    .replace(/\s+/g, ' ')
-    .replace(INTRO_PHRASE, '')
-    .replace(/([.;])\s*/g, '$1 ')
-    .replace(CONNECTIVE_DROP, ` ${SPLIT_MARK}`)
-    .replace(CONNECTIVE_KEEP, ` ${SPLIT_MARK}$1 `)
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  const parts = []
-  let current = ''
-  const words = normalized.split(' ')
-
-  for (let i = 0; i < words.length; i++) {
-    let word = words[i]
-    const forcedBreak = word.startsWith(SPLIT_MARK)
-    if (forcedBreak) word = word.slice(SPLIT_MARK.length)
-    const prevWord = words[i - 1] ?? ''
-    const isFirstWord = current.trim() === ''
-    const splitHere = !isFirstWord && (
-      forcedBreak
-      || prevWord.endsWith(';')
-      || prevWord.endsWith('.')
-      || (word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase())
-    )
-
-    if (splitHere) {
-      const trimmed = current.trim().replace(/[;,.]$/, '').trim()
-      if (trimmed) parts.push(trimmed)
-      current = `${word} `
-    } else {
-      current += `${word} `
-    }
-  }
-
-  const last = current.trim().replace(/[;,.]$/, '').trim()
-  if (last) parts.push(last)
-
-  return parts
-    .filter((s) => !INTRO_PHRASE_ONLY.test(s.trim()))
-    .map((description) => capitalizeFirst(description.replace(INTRO_PHRASE, '')))
-}
 
 const normalizeFigure = (fig, elements) => {
   const elementIds = (fig.elements ?? [])
@@ -277,35 +219,26 @@ export default function Schemes() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [elementsEdit.isEditing, elementsEdit.requestClose, figuresEdit.isEditing, figuresEdit.requestClose])
 
-  const handleImportElements = async () => {
+  const handleGenerateElements = async () => {
     if (elementsLoaded) {
       showWarning('Список уже составлен')
       return
     }
     setElementsLoading(true)
     try {
-      const patent = await patentService.getPatent(id)
-      const construction = (patent.construction ?? '').trim()
-      if (!construction) {
-        showWarning('Заполните поле «Конструкция» в описании изобретения')
-        return
-      }
-
-      const descriptions = parseImportedElements(construction)
-      if (descriptions.length === 0) {
-        showWarning('Не удалось выделить составные части из конструкции')
-        return
-      }
-
-      const data = await apiFetch(API_DRAWINGS_ENDPOINTS.IMPORT(id), {
+      const data = await apiFetch(API_DRAWINGS_ENDPOINTS.ELEMENTS_GENERATE(id), {
         method: 'POST',
-        body: JSON.stringify({ elements: descriptions }),
       })
-      setElements((data.elements ?? []).map(normalizeElement))
+      const elems = (data.elements ?? []).map(normalizeElement)
+      if (elems.length === 0) {
+        showWarning('Не удалось сформировать список составных частей')
+        return
+      }
+      setElements(elems)
       setElementsLoaded(true)
       showSuccess('Список составных частей сформирован')
     } catch (err) {
-      showError(err.message || 'Ошибка загрузки')
+      showError(err.message || 'Ошибка генерации')
     } finally {
       setElementsLoading(false)
     }
@@ -407,12 +340,15 @@ export default function Schemes() {
     }
     setFiguresLoading(true)
     try {
-      const figs = await fetchFigures(elements)
+      const data = await apiFetch(API_DRAWINGS_ENDPOINTS.FIGURES_GENERATE(id), {
+        method: 'POST',
+      })
+      const figs = (data.figures ?? []).map((f) => normalizeFigure(f, elements))
       setFigures(figs)
       setFiguresLoaded(true)
-      showSuccess(figs.length > 0 ? 'Фигуры загружены' : 'Список фигур пуст — добавьте первую')
+      showSuccess(figs.length > 0 ? 'Фигуры составлены' : 'Список фигур пуст — добавьте первую')
     } catch (err) {
-      showError(err.message || 'Ошибка загрузки')
+      showError(err.message || 'Ошибка генерации')
     } finally {
       setFiguresLoading(false)
     }
@@ -526,7 +462,7 @@ export default function Schemes() {
         <button
           type="button"
           className={actionButtonClass(false, elementsLoading, elementsLoaded)}
-          onClick={handleImportElements}
+          onClick={handleGenerateElements}
           disabled={elementsLoading}
         >
           Составить список составных частей изобретения
