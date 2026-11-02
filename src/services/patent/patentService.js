@@ -1,19 +1,10 @@
 import { APP_CONFIG } from '../appConfig'
-import { MOCK_PATENTS, generateMockPatentId } from '../mocks/mockData'
-import { mockDelay } from '../mocks/mockUtils'
 import { API_PATENT_ENDPOINTS } from '../apiConfig'
 import authService from '../auth/authService'
 
 class PatentService {
   async getUserPatents() {
     console.log('🔍 API_PATENT_ENDPOINTS.PATENT_GET_ALL =', API_PATENT_ENDPOINTS.PATENT_GET_ALL);
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      return Object.entries(MOCK_PATENTS).map(([id, patent]) => ({
-        id,
-        ...patent
-      }))
-    }
 
     const response = await authService.authenticatedFetch(
       API_PATENT_ENDPOINTS.PATENT_GET_ALL,
@@ -59,14 +50,6 @@ class PatentService {
   }
 
   async getPatent(patentUuid) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      const patent = MOCK_PATENTS[patentUuid]
-      if (!patent) {
-        throw new Error('Патент не найден')
-      }
-      return patent
-    }
 
     const response = await authService.authenticatedFetch(
       API_PATENT_ENDPOINTS.PATENT_GET(patentUuid),
@@ -90,16 +73,6 @@ class PatentService {
   }
 
   async createPatent(patentData) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      const newId = generateMockPatentId()
-      const newPatent = {
-        patent_uuid: newId,
-        ...patentData
-      }
-      MOCK_PATENTS[newId] = newPatent
-      return newPatent
-    }
 
     const response = await authService.authenticatedFetch(
       API_PATENT_ENDPOINTS.PATENT_CREATE,
@@ -129,17 +102,6 @@ class PatentService {
   }
 
   async editPatent(patentUuid, patentData) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      if (!MOCK_PATENTS[patentUuid]) {
-        throw new Error('Патент не найден')
-      }
-      MOCK_PATENTS[patentUuid] = {
-        ...MOCK_PATENTS[patentUuid],
-        ...patentData
-      }
-      return MOCK_PATENTS[patentUuid]
-    }
 
     const response = await authService.authenticatedFetch(
       API_PATENT_ENDPOINTS.PATENT_EDIT(patentUuid),
@@ -169,14 +131,6 @@ class PatentService {
   }
 
   async deletePatent(patentUuid) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      if (!MOCK_PATENTS[patentUuid]) {
-        throw new Error('Патент не найден')
-      }
-      delete MOCK_PATENTS[patentUuid]
-      return { success: true }
-    }
 
     const response = await authService.authenticatedFetch(
       API_PATENT_ENDPOINTS.PATENT_DELETE(patentUuid),

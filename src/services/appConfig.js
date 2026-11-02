@@ -1,6 +1,4 @@
 export const APP_CONFIG = {
-  USE_OFFLINE_MODE: false,
+  // API path the Vite dev server proxies (see vite.config.js)
   PROXY_TARGET: 'http://localhost/api/v2',
-  MOCK_DELAY: 0,
 }
-// ФАЙЛ В GITIGNORE, ПРИ ИЗМЕНЕНИИ УБРАТЬ

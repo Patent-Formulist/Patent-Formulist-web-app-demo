@@ -1,10 +1,5 @@
-import { APP_CONFIG } from './appConfig'
-
-// ФАЙЛ В GITIGNORE, ПРИ ИЗМЕНЕНИИ УБРАТЬ
-const URL = APP_CONFIG.USE_OFFLINE_MODE 
-  ? 'mock://localhost/api/v2'
-  : 'http://localhost/api/v2'
-// ИЗМЕНЕННЫЙ УЧАСТОК КОДА МЕЖДУ КОММЕНТАРИЕВ
+// Relative URL: dev goes through the Vite proxy, prod through nginx
+const URL = '/api/v2'
 
 export const API_AUTH_ENDPOINTS = {
   LOGIN: `${URL}/users/login`,

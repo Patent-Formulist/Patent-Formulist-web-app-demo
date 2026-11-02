@@ -1,6 +1,4 @@
 import { APP_CONFIG } from '../appConfig'
-import { MOCK_USERS } from '../mocks/mockData'
-import { mockDelay } from '../mocks/mockUtils'
 import { API_AUTH_ENDPOINTS } from '../apiConfig'
 
 class AuthService {
@@ -23,17 +21,6 @@ class AuthService {
   }
 
   async login(email, password) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      
-      const user = MOCK_USERS[email]
-      if (!user || user.password !== password) {
-        throw new Error('Неверный email или пароль')
-      }
-      
-      this.saveTokens(user.tokens.access, user.tokens.refresh)
-      return user.tokens
-    }
 
     const response = await fetch(API_AUTH_ENDPOINTS.LOGIN, {
       method: 'POST',
@@ -54,38 +41,6 @@ class AuthService {
   }
 
   async register(email, password) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      
-      if (MOCK_USERS[email]) {
-        throw new Error('Пользователь с таким email уже существует')
-      }
-      
-      const tokens = {
-        access: `mock_access_${Date.now()}`,
-        refresh: `mock_refresh_${Date.now()}`
-      }
-      
-      MOCK_USERS[email] = {
-        email,
-        password,
-        tokens,
-        profile: {
-          name: email.split('@')[0],
-          about: '',
-          email,
-          avatar: null
-        },
-        settings: {
-          isExpert: false,
-          aiModel: 'GPT-4',
-          subscription: 'Free'
-        }
-      }
-      
-      this.saveTokens(tokens.access, tokens.refresh)
-      return tokens
-    }
 
     const response = await fetch(API_AUTH_ENDPOINTS.REGISTER, {
       method: 'POST',
@@ -110,10 +65,6 @@ class AuthService {
   }
 
   async validate() {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      const token = this.getAccessToken()
-      return !!token
-    }
 
     const token = this.getAccessToken()
     if (!token) return false
@@ -130,19 +81,6 @@ class AuthService {
   }
 
   async refreshAccessToken() {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      const refreshToken = this.getRefreshToken()
-      if (!refreshToken) {
-        throw new Error('Refresh token отсутствует')
-      }
-      
-      const newAccess = `mock_access_refreshed_${Date.now()}`
-      const newRefresh = `mock_refresh_refreshed_${Date.now()}`
-      this.saveTokens(newAccess, newRefresh)
-      
-      return { access: newAccess, refresh: newRefresh }
-    }
 
     const refreshToken = this.getRefreshToken()
     if (!refreshToken) {
@@ -167,9 +105,6 @@ class AuthService {
   }
 
   async authenticatedFetch(url, options = {}) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      return null
-    }
 
     const token = this.getAccessToken()
     const headers = {
@@ -196,11 +131,6 @@ class AuthService {
   }
 
   async logout() {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      this.clearTokens()
-      window.location.href = '/login'
-      return
-    }
 
     try {
       const token = this.getAccessToken()

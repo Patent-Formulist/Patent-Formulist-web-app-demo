@@ -1,6 +1,4 @@
 import { APP_CONFIG } from '../appConfig'
-import { MOCK_ANALOGS, MOCK_COMPARISON, MOCK_PROTOTYPES, generateMockTaskId } from '../mocks/mockData'
-import { mockDelay, globalMockTaskManager } from '../mocks/mockUtils'
 import { API_PROCESSOR_ENDPOINTS } from '../apiConfig'
 import authService from '../auth/authService'
 import * as XLSX from 'xlsx'
@@ -42,17 +40,6 @@ class ReferenceService {
   async createAnalogLink(patentId) {
     console.log('🟠 [Service] createAnalogLink: ЗАПУСК', { patentId, time: new Date().toISOString() })
     
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      console.log('🟠 [Service] createAnalogLink: оффлайн режим')
-      await mockDelay(null)
-      const taskId = generateMockTaskId('analog')
-      globalMockTaskManager.createTask(taskId, patentId, 'analogs')
-      setTimeout(() => {
-        const analogsData = MOCK_ANALOGS[patentId] || MOCK_ANALOGS['1']
-        globalMockTaskManager.completeTask(taskId, analogsData)
-      }, 3000)
-      return { task_id: taskId }
-    }
 
     console.log('🟠 [Service] createAnalogLink: выполняем POST запрос...')
     const postStart = Date.now()
@@ -97,15 +84,6 @@ class ReferenceService {
       }
     }
 
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      console.log('🟤 [Service] getTaskResult: оффлайн режим')
-      await mockDelay(null)
-      const task = globalMockTaskManager.getTask(taskId)
-      if (!task) return { status: TASK_STATUS.FAILED, message: 'Задача не найдена', task_id: taskId }
-      if (task.status === 'success') return { status: TASK_STATUS.SUCCESS, message: 'Готово', task_id: taskId, data: task.data }
-      if (task.status === 'failed') return { status: TASK_STATUS.FAILED, message: task.error || 'Ошибка', task_id: taskId }
-      return { status: TASK_STATUS.RUNNING, message: 'Выполняется...', task_id: taskId, progress: task.progress }
-    }
 
     console.log('🟤 [Service] getTaskResult: РЕАЛЬНЫЙ РЕЖИМ - запрос к серверу')
     const getStart = Date.now()
@@ -148,18 +126,6 @@ class ReferenceService {
   async createAnalogCompare(patentId) {
     console.log('🟠 [Service] createAnalogCompare: ЗАПУСК', { patentId, time: new Date().toISOString() })
 
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      console.log('🟠 [Service] createAnalogCompare: оффлайн режим')
-      await mockDelay(null)
-      const taskId = generateMockTaskId('compare')
-      globalMockTaskManager.createTask(taskId, patentId, 'compare')
-      setTimeout(() => {
-        const comparisonData = MOCK_COMPARISON[patentId] || MOCK_COMPARISON['1']
-        globalMockTaskManager.completeTask(taskId, comparisonData)
-      }, 4000)
-      console.log('🟠 [Service] createAnalogCompare: оффлайн - возвращаем task_id', { taskId })
-      return { task_id: taskId }
-    }
 
     // Clear stale cache so polling won't return old data while the new job runs.
     localStorage.removeItem(`analogs_statistics_${patentId}`)
@@ -197,15 +163,6 @@ class ReferenceService {
   async getCompareResult(taskId, patentId) {
     console.log('🟤 [Service] getCompareResult: ВЫЗОВ', { taskId, patentId, time: new Date().toISOString() })
 
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      console.log('🟤 [Service] getCompareResult: оффлайн режим')
-      await mockDelay(null)
-      const task = globalMockTaskManager.getTask(taskId)
-      if (!task) return { status: TASK_STATUS.FAILED, message: 'Задача не найдена', task_id: taskId }
-      if (task.status === 'success') return { status: TASK_STATUS.SUCCESS, message: 'Готово', task_id: taskId, data: task.data }
-      if (task.status === 'failed') return { status: TASK_STATUS.FAILED, message: task.error || 'Ошибка', task_id: taskId }
-      return { status: TASK_STATUS.RUNNING, message: 'Выполняется...', task_id: taskId, progress: task.progress }
-    }
 
     // Check real job status before fetching data.
     const jobResponse = await authService.authenticatedFetch(
@@ -269,18 +226,6 @@ class ReferenceService {
   async createPrototypeTask(patentId) {
     console.log('🟠 [Service] createPrototypeTask: ЗАПУСК', { patentId, time: new Date().toISOString() })
 
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      console.log('🟠 [Service] createPrototypeTask: оффлайн режим')
-      await mockDelay(null)
-      const taskId = generateMockTaskId('prototype')
-      globalMockTaskManager.createTask(taskId, patentId, 'prototype')
-      setTimeout(() => {
-        const prototypeData = MOCK_PROTOTYPES[patentId] || MOCK_PROTOTYPES['1']
-        globalMockTaskManager.completeTask(taskId, prototypeData)
-      }, 3000)
-      console.log('🟠 [Service] createPrototypeTask: оффлайн - возвращаем task_id', { taskId })
-      return { task_id: taskId }
-    }
 
     // Clear stale cache so polling won't return old data while the new job runs.
     localStorage.removeItem(`analogs_identity_${patentId}`)
@@ -313,15 +258,6 @@ class ReferenceService {
   async getPrototypeResult(taskId, patentId) {
     console.log('🟤 [Service] getPrototypeResult: ВЫЗОВ', { taskId, patentId, time: new Date().toISOString() })
 
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      console.log('🟤 [Service] getPrototypeResult: оффлайн режим')
-      await mockDelay(null)
-      const task = globalMockTaskManager.getTask(taskId)
-      if (!task) return { status: TASK_STATUS.FAILED, message: 'Задача не найдена', task_id: taskId }
-      if (task.status === 'success') return { status: TASK_STATUS.SUCCESS, message: 'Готово', task_id: taskId, data: task.data }
-      if (task.status === 'failed') return { status: TASK_STATUS.FAILED, message: task.error || 'Ошибка', task_id: taskId }
-      return { status: TASK_STATUS.RUNNING, message: 'Выполняется...', task_id: taskId, progress: task.progress }
-    }
 
     // Check real job status before fetching data.
     const jobResponse = await authService.authenticatedFetch(
@@ -383,14 +319,6 @@ class ReferenceService {
   }
 
   async setPrototype(patentId, prototypeNumber) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      MOCK_PROTOTYPES[patentId] = {
-        prototype_number: prototypeNumber,
-        selected_from_analogs: true
-      }
-      return MOCK_PROTOTYPES[patentId]
-    }
 
     const response = await authService.authenticatedFetch(
       API_PROCESSOR_ENDPOINTS.PROTOTYPE_SET,
@@ -416,14 +344,6 @@ class ReferenceService {
   }
 
   async getPrototype(patentId) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      const prototype = MOCK_PROTOTYPES[patentId]
-      if (!prototype) {
-        throw new Error('Прототип не установлен')
-      }
-      return prototype
-    }
 
     const response = await authService.authenticatedFetch(
       API_PROCESSOR_ENDPOINTS.PROTOTYPE_GET(patentId),

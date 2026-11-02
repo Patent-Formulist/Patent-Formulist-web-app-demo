@@ -1,13 +1,6 @@
 import { APP_CONFIG } from '../appConfig'
-import { MOCK_USERS, MOCK_AI_MODELS } from '../mocks/mockData'
-import { mockDelay } from '../mocks/mockUtils'
 import { API_PROFILE_ENDPOINTS } from '../apiConfig'
 import authService from '../auth/authService'
-
-const getCurrentMockUser = () => {
-  const email = 'test@test.com'
-  return MOCK_USERS[email]
-}
 
 class ProfileService {
   async parseJson(response) {
@@ -19,14 +12,6 @@ class ProfileService {
   }
 
   async getProfile() {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      const user = getCurrentMockUser()
-      if (!user) {
-        throw new Error('Пользователь не найден')
-      }
-      return user.profile
-    }
 
     const response = await authService.authenticatedFetch(
       API_PROFILE_ENDPOINTS.PROFILE_GET,
@@ -48,20 +33,6 @@ class ProfileService {
   }
 
   async updateProfile(profileData) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      const user = getCurrentMockUser()
-      if (!user) {
-        throw new Error('Пользователь не найден')
-      }
-      
-      user.profile = {
-        ...user.profile,
-        ...profileData
-      }
-      
-      return user.profile
-    }
 
     const response = await authService.authenticatedFetch(
       API_PROFILE_ENDPOINTS.PROFILE_UPDATE,
@@ -87,18 +58,6 @@ class ProfileService {
   }
 
   async uploadAvatar(file) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      const user = getCurrentMockUser()
-      if (!user) {
-        throw new Error('Пользователь не найден')
-      }
-      
-      const mockAvatarUrl = `mock://avatar/${Date.now()}.jpg`
-      user.profile.avatar = mockAvatarUrl
-      
-      return { avatar_url: mockAvatarUrl }
-    }
 
     const formData = new FormData()
     formData.append('avatar', file)
@@ -123,14 +82,6 @@ class ProfileService {
   }
 
   async getSettings() {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      const user = getCurrentMockUser()
-      if (!user) {
-        throw new Error('Пользователь не найден')
-      }
-      return user.settings
-    }
 
     const response = await authService.authenticatedFetch(
       API_PROFILE_ENDPOINTS.SETTINGS_GET,
@@ -152,20 +103,6 @@ class ProfileService {
   }
 
   async updateSettings(settingsData) {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      const user = getCurrentMockUser()
-      if (!user) {
-        throw new Error('Пользователь не найден')
-      }
-      
-      user.settings = {
-        ...user.settings,
-        ...settingsData
-      }
-      
-      return user.settings
-    }
 
     const response = await authService.authenticatedFetch(
       API_PROFILE_ENDPOINTS.SETTINGS_UPDATE,
@@ -191,10 +128,6 @@ class ProfileService {
   }
 
   async getAvailableModels() {
-    if (APP_CONFIG.USE_OFFLINE_MODE) {
-      await mockDelay(null)
-      return MOCK_AI_MODELS
-    }
 
     const response = await authService.authenticatedFetch(
       API_PROFILE_ENDPOINTS.AI_MODELS_GET,

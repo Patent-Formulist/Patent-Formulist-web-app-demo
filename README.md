@@ -1,62 +1,72 @@
-# Patent FormuList
+# Patent FormuList — Web
 
-Fullstack веб-приложение для управления патентными формулами
+Веб-интерфейс к сервису автоматизации патентных заявок: работа с патентами,
+аналогами, признаками, статистикой, генерацией заявки и чертежами.
 
-## 📋 Описание
+> Демонстрационная версия: офлайн-моки удалены, приложение работает только
+> против реального API.
 
-Patent FormuList — это современное веб-приложение, построенное на React с использованием Vite для frontend и FastAPI для backend. Проект включает систему аутентификации, регистрации пользователей и управления данными.
+## Стек
 
-## 🚀 Технологии
+- **React 19** + Vite 6
+- **React Router 7**, react-hook-form
+- `jwt-decode` — разбор токена, `xlsx` — экспорт таблиц
 
-### Frontend
-- **React** 19.2 — библиотека для создания пользовательских интерфейсов
-- **Vite** 6.0 — быстрый инструмент сборки и dev-сервер
-- **React Router DOM** 7.9 — маршрутизация для SPA
+## Быстрый старт
 
-## 🔧 Установка
+Нужны Node.js 18+ и запущенный backend (см. репозиторий
+`AI-assistant-for-patents-monolithic`).
 
-### Требования
-- **Node.js** 18+ и npm
-  
-### Установка всех зависимостей
+```bash
+npm ci
+npm run dev          # http://localhost:3000
+```
 
-Установить все зависимости одной командой
-npm run install
+Запросы к `/api` проксируются на backend через Vite (`vite.config.js`,
+`PROXY_TARGET` в `src/services/appConfig.js`, по умолчанию
+`http://localhost/api/v2`).
 
-## ▶️ Запуск проекта
+### Через Docker
 
-### Запуск сайт
+В compose-стеке бэкенда фронтенд собирается из этого репозитория и доступен по
+адресу http://localhost/ рядом с API:
 
-npm start
+```bash
+# в репозитории бэкенда
+docker compose -f compose.dev.yaml --env-file .env.dev up -d --build
+```
 
-После запуска откроются:
-- **Frontend:** https://localhost:3000
+Путь к этому репозиторию задаётся переменной `FRONTEND_PATH`.
 
-## ⚙️ Конфигурация
+## Сборка
 
-### Vite Proxy
+```bash
+npm run build        # dist/
+npm run preview      # локальный просмотр сборки
+```
 
-В `vite.config.js` настроен прокси для API запросов:[web:24][web:25]
+## Структура
 
-proxy: {
-  '/api': {
-    target: 'https://localhost.ru',     
-    changeOrigin: true,
-    secure: false,
-    rewrite: path => path.replace(/^\/api/, '/api/v2'),
-  },
-}
+```
+src/
+├── components/      общие компоненты
+├── contexts/        React-контексты (авторизация и т.п.)
+├── features/        функциональные модули (auth, patents, ...)
+├── layouts/         каркасы страниц
+├── resources/       статика и палитры
+├── routes/          маршрутизация
+└── services/        слой API: auth, patent, reference, profile
+```
 
-Это позволяет делать запросы с frontend к backend без CORS проблем в разработке.
+Слой `src/services/*` — единственное место, где выполняются HTTP-запросы;
+эндпоинты собраны в `src/services/apiConfig.js` (относительный путь `/api/v2`).
 
-## 🛠 Разработка
+## Как работает авторизация
 
-### Добавление новых зависимостей
+Токены хранятся в `localStorage` (`accessToken`, `refreshToken`), запросы
+выполняются через `authService.authenticatedFetch`, refresh — через
+`authService.refreshToken`.
 
-**Frontend (npm):**
-npm install название-пакета
+## Лицензия
 
-### Hot Reload
-
-Vite поддерживает горячую перезагрузку:
-- Изменения в React компонентах применяются мгновенно
+См. [LICENSE](LICENSE).
